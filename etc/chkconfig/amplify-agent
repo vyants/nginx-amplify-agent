@@ -1,0 +1,102 @@
+#!/bin/bash
+# nginx-nr-agent init script
+#
+# chkconfig: - 50 50
+# description: NGINX Amplify Agent
+#
+# processname: /usr/bin/nginx-amplify-agent.py
+# config: /etc/amplify-agent/agent.conf
+# pidfile: /var/run/amplify-agent/amplify-agent.pid
+
+### BEGIN INIT INFO
+# Provides: nginx-amplify-agent
+# Required-Start: $local_fs $network
+# Required-Stop: $local_fs $network
+# Should-Start: 
+# Should-Stop: 
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: start and stop nginx-amplify-agent daemon
+# Description: NGINX Amplify Agent daemon
+### END INIT INFO
+
+# source function library
+. /etc/init.d/functions
+
+RETVAL=0
+prog="nginx-amplify-agent"
+binary=/usr/bin/nginx-amplify-agent.py
+pidfile=/var/run/amplify-agent/amplify-agent.pid
+conffile=/etc/amplify-agent/agent.conf
+
+start() {
+        [ -x $binary ] || exit 5
+        echo -n $"Starting $prog: "
+        if [ $UID -ne 0 ]; then
+                RETVAL=1
+                failure
+        else
+                mkdir -p /var/run/amplify-agent && chown nginx /var/run/amplify-agent
+                daemon --user=nginx $binary start --config=$conffile --pid=$pidfile
+        fi;
+        echo 
+        return $RETVAL
+}
+
+stop() {
+        echo -n $"Stopping $prog: "
+        if [ $UID -ne 0 ]; then
+                RETVAL=1
+                failure
+        else
+                killproc -p $pidfile $binary
+        fi;
+        echo
+        return $RETVAL
+}
+
+restart(){
+	stop
+	start
+}
+configtest(){
+        [ -x $binary ] || exit 5
+        if [ $UID -ne 0 ]; then
+                RETVAL=1
+                failure
+        else
+                $binary configtest  --config=$conffile --pid=$pidfile
+                RETVAL=$?
+        fi;
+        return $RETVAL
+}
+
+case "$1" in
+  start)
+	configtest || exit 1
+	start
+	RETVAL=$?
+	;;
+  stop)
+	stop
+	RETVAL=$?
+	;;
+  restart)
+	configtest || exit 1
+	restart
+	RETVAL=$?
+    ;;
+  status)
+        status -p $pidfile amplify-agent
+	RETVAL=$?
+        ;;
+  configtest)
+	configtest
+	RETVAL=$?
+	;;
+  *)
+	echo $"Usage: $0 {start|stop|status|restart|configtest}"
+	RETVAL=2
+esac
+
+exit $RETVAL

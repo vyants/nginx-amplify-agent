@@ -1,0 +1,27 @@
+Centos7:
+  image: amplify-agent-centos7
+  volumes:
+   - ../:/amplify
+  external_links:
+   - docker_receiver_1:receiver
+
+Debian8:
+  image: amplify-agent-debian8
+  volumes:
+   - ../:/amplify
+  external_links:
+   - docker_receiver_1:receiver
+
+Ubuntu1004:
+  image: amplify-agent-ubuntu1004
+  volumes:
+   - ../:/amplify
+  external_links:
+   - docker_receiver_1:receiver
+
+Ubuntu1404:
+  image: amplify-agent-ubuntu1404
+  volumes:
+   - ../:/amplify
+  external_links:
+   - docker_receiver_1:receiver

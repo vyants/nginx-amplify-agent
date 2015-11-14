@@ -1,0 +1,155 @@
+# -*- coding: utf-8 -*-
+import re
+
+__author__ = "Mike Belov"
+__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
+__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev"]
+__license__ = ""
+__maintainer__ = "Mike Belov"
+__email__ = "dedm@nginx.com"
+
+REQUEST_RE = re.compile(r'(?P<http_method>[A-Z]+) (?P<request_uri>/.+) HTTP/(?P<http_version>[\d\.]+)')
+
+
+class NginxAccessLogParser(object):
+    """
+    Nginx error log parser
+
+    """
+    short_name = 'nginx_elog'
+
+    combined_format = '$remote_addr - $remote_user [$time_local] "$request" ' + \
+                      '$status $body_bytes_sent "$http_referer" "$http_user_agent"'
+
+    default_variable = ['.+', str]
+
+    common_variables = {
+        'request': ['.+', str],
+        'body_bytes_sent': ['\d+', int],
+        'bytes_sent': ['\d+', int],
+        'connection': ['[\d\s]+', str],
+        'connection_requests': ['\d+', int],
+        'msec': ['.+', float],
+        'pipe': ['[p|\.]', str],
+        'request_length': ['\d+', int],
+        'request_time': ['.+', str],
+        'status': ['\d+', str],
+        'time_iso8601': ['.+', str],
+        'time_local': ['.+', str],
+        'upstream_response_time': ['.+', str],
+        'upstream_connect_time': ['.+', str],
+        'upstream_header_time': ['.+', str],
+        'upstream_status': ['.+', str],
+        'upstream_cache_status': ['.+', str],
+        'gzip_ratio': ['.+', float],
+    }
+
+    request_variables = {
+        'http_method': ['[A-Z]+', str],
+        'request_uri': ['/.+', str],
+        'http_version': ['[\d\.]+', str],
+    }
+
+    def __init__(self, raw_format=None):
+        """
+        Takes raw format and generates regex
+        :param raw_format: raw log format
+        """
+        self.raw_format = self.combined_format if raw_format is None else raw_format
+
+        self.keys = []
+        self.regex_string = r''
+        self.regex = None
+        current_key = None
+
+        def finalize_key():
+            key_without_dollar = current_key[1:]
+            self.keys.append(key_without_dollar)
+            rxp = self.common_variables.get(key_without_dollar, self.default_variable)[0]
+            self.regex_string += '(?P<%s>%s)' % (key_without_dollar, rxp)
+
+        for char in self.raw_format:
+            if current_key:
+                # if there's a current key
+                if char.isalpha() or char == '_':
+                    # continue building key
+                    current_key += char
+                else:
+                    # finalize current_key
+                    finalize_key()
+
+                    if char == '$':
+                        # if there's a new key - create it
+                        current_key = char
+                    else:
+                        # otherwise - add char to regex
+                        current_key = None
+                        if char.isalpha():
+                            self.regex_string += char
+                        else:
+                            self.regex_string += '\%s' % char
+            else:
+                # if there's no current key
+                if char == '$':
+                    current_key = char
+                else:
+                    if char.isalpha():
+                        self.regex_string += char
+                    else:
+                        self.regex_string += '\%s' % char
+
+        # key can be the last one element in a string
+        if current_key:
+            finalize_key()
+
+        self.regex = re.compile(self.regex_string)
+
+    def parse(self, line):
+        """
+        Parses the line and if there are some special fields - parse them too
+        For example we can get HTTP method and HTTP version from request
+
+        :param line: log line
+        :return: dict with parsed info
+        """
+        result = {}
+
+        # parse the line
+        common = self.regex.match(line)
+        if common:
+            for key in self.keys:
+                func = self.common_variables.get(key, self.default_variable)[1]
+                try:
+                    value = func(common.group(key))
+                # for example gzip ratio can be '-' and float
+                except ValueError:
+                    value = 0
+
+                # time variables should be parsed to array of float
+                if key.endswith('_time'):
+                    # skip empty vars
+                    if value != '-':
+                        array_value = []
+                        for x in value.replace(' ', '').split(','):
+                            x = float(x)
+                            # workaround for an old nginx bug with time. ask lonerr@ for details
+                            if x > 10000000:
+                                continue
+                            else:
+                                array_value.append(x)
+                        if array_value:
+                            result[key] = array_value
+                else:
+                    result[key] = value
+
+        # parse subfields
+        if 'request' in result:
+            req = REQUEST_RE.match(result['request'])
+            if req:
+                result['malformed'] = False
+                for req_key in self.request_variables.iterkeys():
+                    result[req_key] = req.group(req_key)
+            else:
+                result['malformed'] = True
+
+        return result

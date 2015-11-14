@@ -1,0 +1,18 @@
+#!/bin/bash
+# postinst script for Nginx Amplify Agent
+
+set -e
+
+if [ "$1" != "configure" ]; then
+    exit 0
+fi
+
+if [ -z "$2" ]; then
+    update-rc.d amplify-agent defaults
+    mkdir -p /var/run/amplify-agent
+    mkdir -p /var/log/amplify-agent
+    touch /var/log/amplify-agent/agent.log
+    chown nginx /var/run/amplify-agent
+    chown nginx /var/log/amplify-agent
+    chown nginx /var/run/amplify-agent /var/log/amplify-agent/agent.log
+fi

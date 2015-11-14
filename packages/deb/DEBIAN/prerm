@@ -1,0 +1,29 @@
+#!/bin/bash
+
+set -e
+
+case "$1" in
+    remove)
+        samplifyvice amplify-agent stop
+
+        if [ -e /etc/init.d/amplify-agent ]; then
+            rm /etc/init.d/amplify-agent
+            update-rc.d -f amplify-agent remove
+        fi
+
+        [ -d /var/log/amplify-agent ] && rm -R /var/log/amplify-agent
+        [ -d /var/run/amplify-agent ] && rm -R /var/run/amplify-agent
+        [ -d /etc/amplify-agent ] && rm -R /etc/amplify-agent
+        [ -d /usr/lib/python2.7/dist-packages/amplify ] && rm -R /usr/lib/python2.7/dist-packages/amplify
+        [ -d /usr/lib/python2.6/dist-packages/amplify ] && rm -R /usr/lib/python2.6/dist-packages/amplify
+
+        exit 0
+    ;;
+    purge|upgrade|failed-upgrade|abort-remove|abort-upgrade|disappear)
+        echo "postrm called with argument: '$1'" >&2
+    ;;
+    *)
+      echo "postrm called with unknown argument '$1'" >&2
+      exit 0
+    ;;
+esac

@@ -1,0 +1,46 @@
+# -*- coding: utf-8 -*-
+from test.fixtures.defaults import *
+from amplify.agent.config.app import Config
+
+__author__ = "Mike Belov"
+__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
+__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev"]
+__license__ = ""
+__maintainer__ = "Mike Belov"
+__email__ = "dedm@nginx.com"
+
+
+class TestingConfig(Config):
+    filename = 'etc/agent.conf.testing'
+    write_new = True
+
+    config_changes = dict(
+        credentials=dict(
+            uuid=DEFAULT_UUID,
+            api_key=DEFAULT_API_KEY,
+            hostname=DEFAULT_HOST
+        ),
+        containers=dict(
+            system=dict(
+                poll_intervals=dict(
+                    discover=10.0,
+                    meta=30.0,
+                    metrics=20.0,
+                    logs=10.0
+                )
+            ),
+            nginx=dict(
+                upload_config=True,
+                run_test=True,
+                max_test_duration=10.0,
+                upload_ssl=True,
+                poll_intervals=dict(
+                    discover=10.0,
+                    meta=30.0,
+                    metrics=20.0,
+                    logs=10.0,
+                    configs=10.0,
+                ),
+            )
+        )
+    )

@@ -1,0 +1,7 @@
+agent:
+  image: amplify-agent-debian8
+  volumes:
+   - ../:/amplify
+  external_links:
+   - docker_receiver_1:receiver
+  tty: true

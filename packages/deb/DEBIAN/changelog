@@ -1,0 +1,182 @@
+nginx-amplify-agent (0.22-4) unstable; urgency=low
+
+  * Bug fixes
+
+ -- Mike Belov <dedm@nginx.com>  Fri, 13 Nov 2015 11:00:00 -0800
+
+nginx-amplify-agent (0.22-3) unstable; urgency=low
+
+  * Bug fixes
+
+ -- Mike Belov <dedm@nginx.com>  Thu, 12 Nov 2015 17:00:00 -0800
+
+nginx-amplify-agent (0.22-2) unstable; urgency=low
+
+  * Bug fixes
+
+ -- Mike Belov <dedm@nginx.com>  Wed, 11 Nov 2015 17:00:00 -0800
+
+nginx-amplify-agent (0.22-1) unstable; urgency=low
+
+  * Bug fixes
+
+ -- Mike Belov <dedm@nginx.com>  Mon, 09 Nov 2015 07:00:00 -0800
+
+nginx-amplify-agent (0.21-3) unstable; urgency=low
+
+  * Additional events added
+
+ -- Mike Belov <dedm@nginx.com>  Thu, 05 Nov 2015 11:00:00 -0800
+
+nginx-amplify-agent (0.21-2) unstable; urgency=low
+
+  * Bug fixes
+
+ -- Mike Belov <dedm@nginx.com>  Wed, 04 Nov 2015 18:00:00 -0800
+
+nginx-amplify-agent (0.21-1) unstable; urgency=low
+
+  * Bug fixes
+
+ -- Mike Belov <dedm@nginx.com>  Mon, 02 Nov 2015 13:00:00 -0800
+
+nginx-amplify-agent (0.20-1) unstable; urgency=low
+
+  * RPM support
+
+ -- Mike Belov <dedm@nginx.com>  Wed, 28 Oct 2015 12:20:00 -0700
+
+nginx-amplify-agent (0.19-3) unstable; urgency=low
+
+  * Bug fixes
+
+ -- Mike Belov <dedm@nginx.com>  Mon, 19 Oct 2015 18:40:00 -0700
+
+nginx-amplify-agent (0.19-2) unstable; urgency=low
+
+  * Bug fixes
+  * Agent status metric
+  * RPM-based systems support
+
+ -- Mike Belov <dedm@nginx.com>  Fri, 16 Oct 2015 17:35:00 -0700
+
+nginx-amplify-agent (0.19-1) unstable; urgency=low
+
+  * Bug fixes
+
+ -- Mike Belov <dedm@nginx.com>  Tue, 13 Oct 2015 15:50:00 -0700
+
+nginx-amplify-agent (0.18-2) unstable; urgency=low
+
+  * Config parser updates
+  * Bug fixes
+  * Metrics updates
+
+ -- Mike Belov <dedm@nginx.com>  Fri, 02 Oct 2015 08:00:00 -0700
+
+nginx-amplify-agent (0.18-1) unstable; urgency=low
+
+  * Config parser updated
+
+ -- Mike Belov <dedm@nginx.com>  Wed, 30 Sep 2015 16:00:00 -0700
+
+nginx-amplify-agent (0.17-3) unstable; urgency=low
+
+  * Config parser updated
+  * Apply config changes on the objects
+
+ -- Mike Belov <dedm@nginx.com>  Thu, 17 Sep 2015 17:00:00 +0300
+
+nginx-amplify-agent (0.17-2) unstable; urgency=low
+
+  * Config parser updated
+  * Improved disk io counters
+
+ -- Mike Belov <dedm@nginx.com>  Wed, 16 Sep 2015 13:00:00 +0300
+
+nginx-amplify-agent (0.17-1) unstable; urgency=low
+
+  * Config parser update
+
+ -- Mike Belov <dedm@nginx.com>  Tue, 15 Sep 2015 13:00:00 +0300
+
+nginx-amplify-agent (0.16-4) unstable; urgency=low
+
+  * Fixed error with multi-includes
+  * Fixed stub_status
+  * Fixed EC2
+
+ -- Mike Belov <dedm@nginx.com>  Fri, 11 Sep 2015 16:55:00 +0300
+
+nginx-amplify-agent (0.16-3) unstable; urgency=low
+
+  * Config parser update
+
+ -- Mike Belov <dedm@nginx.com>  Wed, 9 Sep 2015 14:00:00 +0300
+
+nginx-amplify-agent (0.16-2) unstable; urgency=low
+
+  * Bugfixing
+
+ -- Mike Belov <dedm@nginx.com>  Tue, 8 Sep 2015 15:00:00 +0300
+
+nginx-amplify-agent (0.16-1) unstable; urgency=low
+
+  * Added logrotate
+  * Fixed nginx logs tailing
+
+ -- Mike Belov <dedm@nginx.com>  Mon, 7 Sep 2015 15:00:00 +0300
+
+nginx-amplify-agent (0.15-5) unstable; urgency=low
+
+  * Memory leak fix
+
+ -- Mike Belov <dedm@nginx.com>  Fri, 4 Sep 2015 12:30:00 +0300
+
+nginx-amplify-agent (0.15-4) unstable; urgency=low
+
+  * Bug fixes
+
+ -- Mike Belov <dedm@nginx.com>  Sat, 29 Aug 2015 12:30:00 +0300
+
+nginx-amplify-agent (0.15-3) unstable; urgency=low
+
+  * Bug fixes
+
+ -- Mike Belov <dedm@nginx.com>  Sat, 29 Aug 2015 12:30:00 +0300
+
+nginx-amplify-agent (0.15-2) unstable; urgency=low
+
+  * Bug fixes
+
+ -- Mike Belov <dedm@nginx.com>  Sat, 29 Aug 2015 12:30:00 +0300
+
+nginx-amplify-agent (0.15-1) unstable; urgency=low
+
+  * New shiny metal name
+
+ -- Mike Belov <dedm@nginx.com>  Sat, 29 Aug 2015 12:30:00 +0300
+
+nginx-amplify-agent (0.14-2) unstable; urgency=low
+
+  * New receivamplify url
+
+ -- Mike Belov <dedm@nginx.com>  Fri, 28 Aug 2015 17:00:00 +0300
+
+nginx-amplify-agent (0.14-1) unstable; urgency=low
+
+  * Bug fixes
+
+ -- Mike Belov <dedm@nginx.com>  Wed, 26 Aug 2015 14:00:00 +0300
+
+nginx-amplify-agent (0.13-1) unstable; urgency=low
+
+  * Events support
+
+ -- Mike Belov <dedm@nginx.com>  Wed, 19 Aug 2015 12:00:00 +0300
+
+nginx-amplify-agent (0.12-1) unstable; urgency=low
+
+  * First release of amplify
+
+ -- Mike Belov <dedm@nginx.com>  Wed, 12 Aug 2015 12:00:00 +0300

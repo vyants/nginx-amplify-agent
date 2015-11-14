@@ -1,0 +1,9 @@
+Package: nginx-amplify-agent
+Description: Nginx Amplify Agent
+Maintainer: Mike Belov <dedm@nginx.com>
+Section: python
+Priority: optional
+Version: 0.0-0
+Homepage: https://www.nginx.com/
+Architecture: any
+Depends: python (>=2.6), lsb-release
