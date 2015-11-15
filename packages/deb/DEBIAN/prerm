@@ -4,7 +4,7 @@ set -e
 
 case "$1" in
     remove)
-        samplifyvice amplify-agent stop
+        service amplify-agent stop
 
         if [ -e /etc/init.d/amplify-agent ]; then
             rm /etc/init.d/amplify-agent
