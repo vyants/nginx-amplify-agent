@@ -16,7 +16,7 @@ agent_conf_file="${agent_conf_path}/agent.conf"
 get_os_name () {
     # Get OS name and codename
 
-    rhel=""
+    centos_flavor="centos"
 
     # Use lsb_release if possible
     if command -V lsb_release > /dev/null 2>&1; then
@@ -26,7 +26,7 @@ get_os_name () {
 
 	if [ "$os" = "redhatenterpriseserver" ]; then
 	    os="centos"
-	    rhel="yes"
+	    centos_flavor="red hat"
 	fi
     else
 	if ! ls /etc/*-release > /dev/null 2>&1; then
@@ -79,8 +79,23 @@ get_os_name () {
 		fi
 		
 		os="centos"
-		rhel="yes"
+		centos_flavor="red hat"
 		;;
+	    amzn)
+	    	codename="amazon-linux-ami"
+	    	release_amzn=`cat /etc/*-release | grep -i 'amazon.*[0-9]' | \
+			 sed 's/^[^0-9]*\([0-9][0-9]*\.[0-9][0-9]*\).*$/\1/' | \
+			 head -1`
+			 
+		if [ "$python_27" = "yes" ]; then
+		    release="7"
+		else
+		    release="6"
+		fi
+
+		os="centos"
+		centos_flavor="amazon linux"
+		;;		
 	    *)
 		codename=""
 		release=""
@@ -269,13 +284,7 @@ case "$os" in
 	install_deb_rpm
 	;;
     centos)
-	if [ -z "$rhel" ]; then
-	    os_flavor="centos"
-	else
-	    os_flavor="red hat"
-	fi
-	
-	printf "\033[32m ${os_flavor} detected.\033[0m\n"
+	printf "\033[32m ${centos_flavor} detected.\033[0m\n"
 
 	step=`expr $step + 1`
 
@@ -358,7 +367,7 @@ if [ -n "$agent_pid" ]; then
 fi
 
 printf "\033[32m Launching amplify-agent ...\033[0m\n"
-${sudo_cmd} service amplify-agent start < /dev/null
+${sudo_cmd} service amplify-agent start > /dev/null 2>&1 < /dev/null
 
 if [ $? -eq 0 ]; then
     printf "\033[32m All done.\033[0m\n\n"
