@@ -173,3 +173,22 @@ class LogParserTestCase(BaseTestCase):
         parsed = parser.parse(line)
 
         assert_that(parsed, has_item('upstream_response_time'))
+
+    def test_soukiii_config(self):
+        """
+        This test is modelled after user soukiii who reported an error in parsing.
+        https://github.com/nginxinc/nginx-amplify-agent/issues/7
+        """
+        user_format = '$remote_addr - [$time_local] $request_method $scheme "$request_uri"  ' + \
+            '$status $request_time $body_bytes_sent  "$http_referer" ' + \
+            '"$http_user_agent" $host'
+
+        line = \
+            '85.25.210.234 - [17/Nov/2015:00:20:50 +0100] GET https "/robots.txt"  200 0.024 240  "-" ' + \
+            '"Mozilla/5.0 (compatible; worldwebheritage.org/1.1; +crawl@worldwebheritage.org)" www.nakupni-dum-praha.cz'
+
+        parser = NginxAccessLogParser(user_format)
+        parsed = parser.parse(line)
+
+        assert_that(parsed, has_item('status'))
+        assert_that(parsed, has_item('request_method'))

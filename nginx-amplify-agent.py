@@ -61,9 +61,9 @@ if __name__ == '__main__':
     try:
         action = sys.argv[1]
         if action not in ('start', 'stop', 'configtest'):
-            print "Invalid action: %s\n" % action
-            raise KeyError
-    except KeyError:
+            raise IndexError
+    except IndexError:
+        print "Invalid action or no action supplied\n"
         parser.print_help()
         sys.exit(1)
 

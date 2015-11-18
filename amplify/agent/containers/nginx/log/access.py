@@ -66,7 +66,13 @@ class NginxAccessLogParser(object):
             key_without_dollar = current_key[1:]
             self.keys.append(key_without_dollar)
             rxp = self.common_variables.get(key_without_dollar, self.default_variable)[0]
-            self.regex_string += '(?P<%s>%s)' % (key_without_dollar, rxp)
+            # Handle formats with multiple instances of the same variable.
+            var_count = self.keys.count(key_without_dollar)
+            if var_count > 1:  # Duplicate variables will be named starting at 2 (var, var2, var3, etc...)
+                regex_var_name = '%s%s' % (key_without_dollar, var_count)
+            else:
+                regex_var_name = key_without_dollar
+            self.regex_string += '(?P<%s>%s)' % (regex_var_name, rxp)
 
         for char in self.raw_format:
             if current_key:
@@ -112,12 +118,12 @@ class NginxAccessLogParser(object):
         :param line: log line
         :return: dict with parsed info
         """
-        result = {}
+        result = {'malformed': False}
 
         # parse the line
         common = self.regex.match(line)
         if common:
-            for key in self.keys:
+            for key in self.keys:  # TODO: Remove extra processing by using a set of keys.
                 func = self.common_variables.get(key, self.default_variable)[1]
                 try:
                     value = func(common.group(key))
@@ -146,7 +152,6 @@ class NginxAccessLogParser(object):
         if 'request' in result:
             req = REQUEST_RE.match(result['request'])
             if req:
-                result['malformed'] = False
                 for req_key in self.request_variables.iterkeys():
                     result[req_key] = req.group(req_key)
             else:

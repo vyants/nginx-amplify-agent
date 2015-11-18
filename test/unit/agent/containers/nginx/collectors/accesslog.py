@@ -162,3 +162,91 @@ class LogsOverallTestCase(NginxCollectorTestCase):
         assert_that(counter['C|nginx.upstream.request.count'][0][1], equal_to(2))
         assert_that(counter['C|nginx.upstream.next.count'][0][1], equal_to(1))
         assert_that(timer['G|nginx.upstream.response.time.max'][0][1], equal_to(2.001+0.345))
+
+    def test_extend_duplicates(self):
+        """
+        Test a log format that defines duplicate variables (NAAS-686).
+        """
+        log_format = '$remote_addr - $remote_addr - $remote_addr - $remote_user [$time_local] ' + \
+                     '"$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" ' + \
+                     'rt=$request_time ut="$upstream_response_time" cs=$upstream_cache_status'
+
+        lines = [
+            '1.2.3.4 - 1.2.3.4 - 1.2.3.4 - - [22/Jan/2010:19:34:21 +0300] "GET /foo/ HTTP/1.1" 200 11078 ' +
+            '"http://www.rambler.ru/" "Mozilla/5.0 (Windows; U; Windows NT 5.1" rt=0.010 ut="2.001, 0.345" cs=MISS',
+
+            '1.2.3.4 - 1.2.3.4 - 1.2.3.4 - - [22/Jan/2010:20:34:21 +0300] "GET /foo/ HTTP/1.1" 300 1078 ' +
+            '"http://www.rambler.ru/" "Mozilla/5.0 (Windows; U; Windows NT 5.1" rt=0.010 ut="2.002" cs=HIT',
+
+        ]
+
+        collector = NginxAccessLogsCollector(object=self.fake_object, log_format=log_format, tail=lines)
+        collector.collect()
+
+        # check
+        metrics = self.fake_object.statsd.flush()['metrics']
+        assert_that(metrics, has_item('counter'))
+        assert_that(metrics, has_item('timer'))
+
+        # counter keys
+        counter = metrics['counter']
+        for key in ['C|nginx.http.method.get', 'C|nginx.http.v1_1', 'C|nginx.upstream.next.count',
+                    'C|nginx.upstream.request.count', 'C|nginx.http.status.3xx', 'C|nginx.cache.miss',
+                    'C|nginx.http.status.2xx', 'C|nginx.http.request.body_bytes_sent', 'C|nginx.cache.hit']:
+            assert_that(counter, has_key(key))
+
+        # timer keys
+        timer = metrics['timer']
+        for key in ['G|nginx.upstream.response.time.pctl95', 'C|nginx.upstream.response.time.count',
+                    'C|nginx.http.request.time.count', 'G|nginx.http.request.time',
+                    'G|nginx.http.request.time.pctl95', 'G|nginx.http.request.time.median',
+                    'G|nginx.http.request.time.max', 'G|nginx.upstream.response.time',
+                    'G|nginx.upstream.response.time.median', 'G|nginx.upstream.response.time.max']:
+            assert_that(timer, has_key(key))
+
+        # values
+        assert_that(counter['C|nginx.http.method.get'][0][1], equal_to(2))
+        assert_that(counter['C|nginx.upstream.request.count'][0][1], equal_to(2))
+        assert_that(counter['C|nginx.upstream.next.count'][0][1], equal_to(1))
+        assert_that(timer['G|nginx.upstream.response.time.max'][0][1], equal_to(2.001+0.345))
+
+    def test_extend_duplicates_reported(self):
+        """
+        Test the specific reported bug format (NAAS-686).
+        """
+        log_format = '$remote_addr - $remote_user [$time_local]  ' + \
+                     '"$request" $status $body_bytes_sent ' + \
+                     '"$http_referer" "$http_user_agent" ' + \
+                     '$request_length $body_bytes_sent'
+
+        lines = [
+            '188.165.1.1 - - [17/Nov/2015:22:07:42 +0100]  ' +
+            '"GET /2014/09/quicktipp-phpmyadmin-update-script/?pk_campaign=feed&pk_kwd=quicktipp-' +
+            'phpmyadmin-update-script HTTP/1.1" ' +
+            '200 41110 "http://www.google.co.uk/url?sa=t&source=web&cd=1" "Mozilla/5.0 (Windows NT 6.1; WOW64) ' +
+            'AppleWebKit/535.2 (KHTML, like Gecko) Chrome/15.0.874.92 Safari/535.2" 327 41110',
+
+            '192.168.100.200 - - [17/Nov/2015:22:09:26 +0100]  "POST /wp-cron.php?doing_wp_cron=1447794566.' +
+            '5160338878631591796875 HTTP/1.0" 200 0 "-" "WordPress/4.3.1; http://my.domain.at.private.com" 281 0'
+        ]
+
+        collector = NginxAccessLogsCollector(object=self.fake_object, log_format=log_format, tail=lines)
+        collector.collect()
+
+        # check
+        metrics = self.fake_object.statsd.flush()['metrics']
+        assert_that(metrics, has_item('counter'))
+
+        # counter keys
+        counter = metrics['counter']
+        for key in ['C|nginx.http.method.post', 'C|nginx.http.method.get', 'C|nginx.http.status.2xx',
+                    'C|nginx.http.v1_1', 'C|nginx.http.request.body_bytes_sent', 'C|nginx.http.request.length',
+                    'C|nginx.http.v1_0']:
+            assert_that(counter, has_key(key))
+
+        # values
+        assert_that(counter['C|nginx.http.method.post'][0][1], equal_to(1))
+        assert_that(counter['C|nginx.http.method.get'][0][1], equal_to(1))
+        assert_that(counter['C|nginx.http.status.2xx'][0][1], equal_to(2))
+        assert_that(counter['C|nginx.http.request.length'][0][1], equal_to(608))
+        assert_that(counter['C|nginx.http.request.body_bytes_sent'][0][1], equal_to(41110))

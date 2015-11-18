@@ -115,6 +115,11 @@ fi
 
 
 %changelog
+* Wed Nov 18 2015 Mike Belov <dedm@nginx.com> 0.23-1
+- 0.23-1
+- Bug fixes
+- Ubuntu Wily support
+
 * Sun Nov 15 2015 Mike Belov <dedm@nginx.com> 0.22-5
 - 0.22-5
 - Bug fixes

@@ -1,3 +1,10 @@
+nginx-amplify-agent (0.23-1) unstable; urgency=low
+
+  * Bug fixes
+  * Ubuntu Wily support
+
+ -- Mike Belov <dedm@nginx.com>  Wed, 18 Nov 2015 10:00:00 -0800
+
 nginx-amplify-agent (0.22-5) unstable; urgency=low
 
   * Bug fixes

@@ -64,6 +64,11 @@ class HTTPClient(Singleton):
             'User-Agent': 'nginx-amplify-agent/%s' % context.version
         })
 
+        self.proxies = config.get('proxies')  # Support old configs which don't have 'proxies' section
+
+        if self.proxies is not None and self.proxies['https'] == '':
+            self.proxies = None  # Pass None to trigger requests default scraping of environment variables
+
         logging.getLogger("requests").setLevel(logging.WARNING)
 
     def make_request(self, location, method, data=None, timeout=None, json=True, log=True):
@@ -79,14 +84,16 @@ class HTTPClient(Singleton):
                 r = self.session.get(
                     url,
                     timeout=timeout,
-                    verify=self.verify_ssl
+                    verify=self.verify_ssl,
+                    proxies=self.proxies
                 )
             else:
                 r = self.session.post(
                     url,
                     data=payload,
                     timeout=timeout,
-                    verify=self.verify_ssl
+                    verify=self.verify_ssl,
+                    proxies=self.proxies
                 )
             http_code = r.status_code
             r.raise_for_status()

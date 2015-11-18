@@ -3,6 +3,9 @@ api_key =
 hostname =
 uuid =
 
+[proxies]
+https =
+
 [cloud]
 api_url =
 api_timeout =
@@ -58,4 +61,3 @@ class = logging.handlers.WatchedFileHandler
 level = DEBUG
 formatter = simpleFormatter
 args = ('log/test.log', 'a', None, 1)
-

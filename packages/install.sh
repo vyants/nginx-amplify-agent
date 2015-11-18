@@ -11,10 +11,12 @@ public_key_url="http://nginx.org/keys/nginx_signing.key"
 agent_conf_path="/etc/amplify-agent"
 agent_conf_file="${agent_conf_path}/agent.conf"
 
+#
 # Functions
 #
+
+# Get OS information
 get_os_name () {
-    # Get OS name and codename
 
     centos_flavor="centos"
 
@@ -28,10 +30,11 @@ get_os_name () {
 	    os="centos"
 	    centos_flavor="red hat"
 	fi
+    # Otherwise it's getting a little bit more tricky
     else
 	if ! ls /etc/*-release > /dev/null 2>&1; then
 	    os=`uname -s | \
-	        tr '[:upper:]' '[:lower:]'`
+		tr '[:upper:]' '[:lower:]'`
 	else
 	    os=`cat /etc/*-release | grep '^ID=' | \
 		sed 's/^ID=["]*\([a-zA-Z]*\).*$/\1/' | \
@@ -49,41 +52,41 @@ get_os_name () {
 	case "$os" in
 	    ubuntu)
 		codename=`cat /etc/*-release | grep '^DISTRIB_CODENAME' | \
-		          sed 's/^[^=]*=\([^=]*\)/\1/' | \
-		          tr '[:upper:]' '[:lower:]'`
-	        ;;
+			  sed 's/^[^=]*=\([^=]*\)/\1/' | \
+			  tr '[:upper:]' '[:lower:]'`
+		;;
 	    debian)
 		codename=`cat /etc/*-release | grep '^VERSION=' | \
-		          sed 's/.*(\(.*\)).*/\1/' | \
-		          tr '[:upper:]' '[:lower:]'`
-	        ;;
+			  sed 's/.*(\(.*\)).*/\1/' | \
+			  tr '[:upper:]' '[:lower:]'`
+		;;
 	    centos)
 		codename=`cat /etc/*-release | grep -i 'centos.*(' | \
-		          sed 's/.*(\(.*\)).*/\1/' | head -1 | \
-		          tr '[:upper:]' '[:lower:]'`
+			  sed 's/.*(\(.*\)).*/\1/' | head -1 | \
+			  tr '[:upper:]' '[:lower:]'`
 		# For CentOS grab release
 		release=`cat /etc/*-release | grep -i 'centos.*[0-9]' | \
-		         sed 's/^[^0-9]*\([0-9][0-9]*\).*$/\1/' | head -1`
-	        ;;
+			 sed 's/^[^0-9]*\([0-9][0-9]*\).*$/\1/' | head -1`
+		;;
 	    rhel)
 		codename=`cat /etc/*-release | grep -i 'red hat.*(' | \
-		          sed 's/.*(\(.*\)).*/\1/' | head -1 | \
-		          tr '[:upper:]' '[:lower:]'`
+			  sed 's/.*(\(.*\)).*/\1/' | head -1 | \
+			  tr '[:upper:]' '[:lower:]'`
 		# For Red Hat also grab release
 		release=`cat /etc/*-release | grep -i 'red hat.*[0-9]' | \
-		         sed 's/^[^0-9]*\([0-9][0-9]*\).*$/\1/' | head -1`
+			 sed 's/^[^0-9]*\([0-9][0-9]*\).*$/\1/' | head -1`
 		
 		if [ -z "$release" ]; then
 		    release=`cat /etc/*-release | grep -i '^VERSION_ID=' | \
-		             sed 's/^[^0-9]*\([0-9][0-9]*\).*$/\1/' | head -1`
+			     sed 's/^[^0-9]*\([0-9][0-9]*\).*$/\1/' | head -1`
 		fi
 		
 		os="centos"
 		centos_flavor="red hat"
 		;;
 	    amzn)
-	    	codename="amazon-linux-ami"
-	    	release_amzn=`cat /etc/*-release | grep -i 'amazon.*[0-9]' | \
+		codename="amazon-linux-ami"
+		release_amzn=`cat /etc/*-release | grep -i 'amazon.*[0-9]' | \
 			 sed 's/^[^0-9]*\([0-9][0-9]*\.[0-9][0-9]*\).*$/\1/' | \
 			 head -1`
 			 
@@ -93,17 +96,74 @@ get_os_name () {
 		    release="6"
 		fi
 
+		# Amazon Linux is basically a flavor of CentOS
 		os="centos"
 		centos_flavor="amazon linux"
 		;;		
 	    *)
 		codename=""
 		release=""
-	        ;;
+		;;
 	esac
     fi
 }
 
+# Check what downloader is available
+check_downloader() {
+    if command -V curl > /dev/null 2>&1; then
+	downloader="curl -fs"
+    else
+	if command -V wget > /dev/null 2>&1; then
+	    downloader="wget -q -O -"
+	else
+	    printf "\033[31m no curl or wget found, exiting.\033[0m\n\n"
+	    exit 1
+	fi
+    fi
+}
+
+# Add public key for package verification (Ubuntu/Debian)
+add_public_key_deb() {
+    printf "\033[32m ${step}. Adding public key ...\033[0m"
+
+    check_downloader && \
+    ${downloader} ${public_key_url} | \
+    ${sudo_cmd} apt-key add - > /dev/null 2>&1
+    
+    if [ $? -ne 0 ]; then
+	printf "\033[31m failed.\033[0m\n\n"
+	exit 1
+    else
+	printf "\033[32m done.\033[0m\n"
+    fi
+}
+
+# Add public key for package verification (CentOS/Red Hat)
+add_public_key_rpm() {
+    printf "\033[32m ${step}. Adding public key ...\033[0m"
+
+    if command -V rpmkeys > /dev/null 2>&1; then
+	rpm_key_cmd="rpmkeys"
+    else
+	rpm_key_cmd="rpm"
+    fi
+    
+    check_downloader && \
+    ${sudo_cmd} rm -f /tmp/nginx_signing.key.$$ && \
+    ${downloader} ${public_key_url} | \
+    tee /tmp/nginx_signing.key.$$ > /dev/null 2>&1 && \
+    ${sudo_cmd} ${rpm_key_cmd} --import /tmp/nginx_signing.key.$$ && \
+    rm -f /tmp/nginx_signing.key.$$
+
+    if [ $? -ne 0 ]; then
+	printf "\033[31m failed.\033[0m\n\n"
+	exit 1
+    else
+	printf "\033[32m done.\033[0m\n"
+    fi
+}
+
+# Add repo configuration (Ubuntu/Debian)
 add_repo_deb () {
     printf "\033[32m ${step}. Adding repository ...\033[0m"
 
@@ -123,13 +183,14 @@ add_repo_deb () {
     fi
 }
 
+# Add repo configuration (CentOS)
 add_repo_rpm () {
-    printf "\033[32m ${step}. Adding repository ...\033[0m"
+    printf "\033[32m ${step}. Adding repository config ...\033[0m"
 
     test -d /etc/yum.repos.d && \
     ${sudo_cmd} test -w /etc/yum.repos.d && \
     ${sudo_cmd} rm -f /etc/yum.repos.d/nginx-amplify.repo && \
-    printf "[nginx-amplify]\nname=nginx repo\nbaseurl=${packages_url}/${os}/${release}/\$basearch\ngpgcheck=0\nenabled=1\n" | \
+    printf "[nginx-amplify]\nname=nginx amplify repo\nbaseurl=${packages_url}/${os}/${release}/\$basearch\ngpgcheck=1\nenabled=1\n" | \
     ${sudo_cmd} tee /etc/yum.repos.d/nginx-amplify.repo > /dev/null 2>&1 && \
     ${sudo_cmd} chmod 644 /etc/yum.repos.d/nginx-amplify.repo > /dev/null 2>&1
 
@@ -141,6 +202,7 @@ add_repo_rpm () {
     fi
 }
 
+# Install package (either deb or rpm)
 install_deb_rpm() {
     # Update repo
     printf "\033[32m ${step}. Updating repository ...\n\n\033[0m"
@@ -172,8 +234,11 @@ install_deb_rpm() {
     fi
 }
 
+
+#
 # Main
 #
+
 step=1
 
 printf "\033[32m\n This script will install NGINX Amplify Agent \n\n\033[0m"
@@ -242,44 +307,26 @@ printf "\033[32m ${step}. Checking OS compatibility ...\033[0m"
 # Get OS name and codename
 get_os_name
 
+# Add public key, create repo config, install package
 case "$os" in
     ubuntu|debian)
-	printf "\033[32m ${os} detected.\033[0m\n"	
+	printf "\033[32m ${os} detected.\033[0m\n"		
+
 	step=`expr $step + 1`
 
 	# Add public key
-	printf "\033[32m ${step}. Adding public key ...\033[0m"
+	add_public_key_deb
 
-	downloader="curl"
-	if command -V ${downloader} > /dev/null 2>&1; then
-	    downloader="${downloader} -fs"
-	else
-	    if command -V wget > /dev/null 2>&1; then
-		downloader="wget -q --no-check-certificate -O -"
-	    else
-		printf "\033[31m no curl or wget found, exiting.\033[0m\n\n"
-		exit 1
-	    fi
-	fi
-
-	${downloader} ${public_key_url} | \
-	${sudo_cmd} apt-key add - > /dev/null 2>&1
-	
-	if [ $? -ne 0 ]; then
-	    printf "\033[31m failed.\033[0m\n\n"
-	    exit 1
-	else
-	    printf "\033[32m done.\033[0m\n"
-	fi
-	
 	step=`expr $step + 1`
 
+	# Add repository configuration
 	add_repo_deb
 
+	step=`expr $step + 1`
+
+	# Install package
 	update_cmd="apt-get update"
 	install_cmd="apt-get install"
-
-	step=`expr $step + 1`
 
 	install_deb_rpm
 	;;
@@ -288,28 +335,35 @@ case "$os" in
 
 	step=`expr $step + 1`
 
-	add_repo_rpm
+	# Add public key
+	add_public_key_rpm
+		
+	step=`expr $step + 1`
 
-	update_cmd="yum makecache"
-	install_cmd="yum install"
+	# Add repository configuration
+	add_repo_rpm
 
 	step=`expr $step + 1`
 
-    	install_deb_rpm
+	# Install package
+	update_cmd="yum makecache"
+	install_cmd="yum install"
+
+	install_deb_rpm
 	;;
    *)
-   	if [ -n "$os" ] && [ "$os" != "linux" ]; then
+	if [ -n "$os" ] && [ "$os" != "linux" ]; then
 	    printf "\033[31m $os is currently unsupported, apologies!\033[0m\n\n"
 	else
 	    printf "\033[31m failed.\033[0m\n\n"
-        fi
-        
-        exit 1
+	fi
+	
+	exit 1
 esac
 
 step=`expr $step + 1`
 
-# Prepare config file
+# Build config file from template
 printf "\033[32m ${step}. Building configuration file ...\033[0m"
 
 if [ ! -f "${agent_conf_file}.default" ]; then
@@ -337,6 +391,7 @@ else
     exit 1
 fi
 
+# Check if init.d script exists
 if [ ! -x /etc/init.d/amplify-agent ]; then
     printf "\033[31m Error: /etc/init.d/amplify-agent not found!\033[0m\n\n"
     exit 1
@@ -355,6 +410,7 @@ printf "\033[33m     /var/log/amplify-agent/agent.log\033[0m\n\n"
 printf "\033[32m After the agent is launched, it might take up to 1 minute\033[0m\n"
 printf "\033[32m for this system to appear in the Amplify UI.\033[0m\n\n"
 
+# Check for an older version of the agent running
 if command -V pgrep > /dev/null 2>&1; then
     agent_pid=`pgrep amplify-agent`
 else
@@ -366,6 +422,7 @@ if [ -n "$agent_pid" ]; then
     ${sudo_cmd} service amplify-agent stop > /dev/null 2>&1 < /dev/null
 fi
 
+# Launch agent
 printf "\033[32m Launching amplify-agent ...\033[0m\n"
 ${sudo_cmd} service amplify-agent start > /dev/null 2>&1 < /dev/null
 

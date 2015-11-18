@@ -3,6 +3,9 @@ api_key =
 hostname = 
 uuid =
 
+[proxies]
+https = 
+
 [cloud]
 api_url = 
 api_timeout = 

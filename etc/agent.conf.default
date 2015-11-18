@@ -1,7 +1,10 @@
 [credentials]
 api_key =
 hostname =
-uuid =  
+uuid =
+
+[proxies]
+https =
 
 [cloud]
 api_url = https://receiver.amplify.nginx.com:4443/1.0

@@ -199,9 +199,9 @@ class NginxConfigParser(object):
         """
 
         # resolve local paths
+        path = path.replace('"', '')
         if not path.startswith('/'):
             path = '%s/%s' % (self.folder, path)
-            path = path.replace('"', '')
 
         # load all files
         current_files = []

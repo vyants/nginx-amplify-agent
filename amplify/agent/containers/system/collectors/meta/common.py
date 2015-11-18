@@ -132,7 +132,7 @@ class SystemCommonMetaCollector(AbstractCollector):
         """ lscpu """
         lscpu_out, _ = subp.call('lscpu')
         for line in lscpu_out:
-            kv = re.match('([\w\d\s]+):\s+([\w|\d]+)', line)
+            kv = re.match('([\w\d\s\(\)]+):\s+([\w|\d]+)', line)
             if kv:
                 key, value = kv.group(1), kv.group(2)
                 if key == 'Architecture':
@@ -143,6 +143,8 @@ class SystemCommonMetaCollector(AbstractCollector):
                     meta['processor']['hypervisor'] = value
                 elif key == 'Virtualization type':
                     meta['processor']['virtualization'] = value
+                elif key == 'CPU(s)':
+                    meta['processor']['cpus'] = value
                 elif 'cache' in key:
                     key = key.replace(' cache', '')
                     meta['processor']['cache'][key] = value
