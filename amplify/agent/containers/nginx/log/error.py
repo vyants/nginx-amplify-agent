@@ -21,6 +21,7 @@ error_re = {
         re.compile(r'.*upstream timed out.*while connecting to upstream, client.*'),
         re.compile(r'.*upstream queue is full while connecting to upstream.*'),
         re.compile(r'.*no live upstreams while connecting to upstream, client.*'),
+        re.compile(r'.*upstream connection is closed too while sending request to upstream, client.*'),
     ],
     'upstream.response.failed': [
         re.compile(r'.*failed.*while reading upstream.*'),

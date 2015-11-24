@@ -27,7 +27,7 @@ class Context(Singleton):
     def __init__(self):
         self.pid = os.getpid()
 
-        self.version = '0.23-1'  # Major.Minor-Build
+        self.version = '0.24-1'  # Major.Minor-Build
 
         self.default_log = None
         self.app_name = None
@@ -66,8 +66,11 @@ class Context(Singleton):
         else:
             configreader.CONFIG_CACHE['app'] = self.app_config
 
-        if kwargs.get('pid_file'):
+        if kwargs.get('pid_file'):  # If pid_file given in setup, then assume agent running in daemon mode.
             self.app_config['daemon']['pid'] = kwargs.get('pid_file')
+            # This means 'daemon' in self.app_config.keys() is a reasonable test for detecting whether agent is running
+            # as a daemon or in the foreground (or generically using self.app_config.get('daemon') which will return
+            # None if running in foreground).
 
     def _setup_app_logs(self, **kwargs):
         from amplify.agent.util import logger

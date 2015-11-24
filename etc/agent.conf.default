@@ -7,7 +7,7 @@ uuid =
 https =
 
 [cloud]
-api_url = https://receiver.amplify.nginx.com:4443/1.0
+api_url = https://receiver.amplify.nginx.com:443/1.0
 api_timeout = 5.0
 
 [loggers]

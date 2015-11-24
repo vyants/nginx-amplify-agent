@@ -131,7 +131,7 @@ class NginxObject(AbstractObject):
             for proto in ('http://', 'https://'):
                 try:
                     full_stub_url = '%s%s' % (proto, stub_url)
-                    stub = requests.get(full_stub_url, timeout=1)
+                    stub = requests.get(full_stub_url, timeout=1, headers={'Connection': 'close'})
                     stub.raise_for_status()
 
                     # Send stub detected event

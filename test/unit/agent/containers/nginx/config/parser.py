@@ -22,6 +22,7 @@ broken_config = os.getcwd() + '/test/fixtures/nginx/broken/nginx.conf'
 rewrites_config = os.getcwd() + '/test/fixtures/nginx/rewrites/nginx.conf'
 map_lua_perl = os.getcwd() + '/test/fixtures/nginx/map_lua_perl/nginx.conf'
 ssl_config = os.getcwd() + '/test/fixtures/nginx/ssl/nginx.conf'
+bad_log_directives = os.getcwd() + '/test/fixtures/nginx/broken/bad_logs.conf'
 
 
 class ParserTestCase(BaseTestCase):
@@ -169,7 +170,6 @@ class ParserTestCase(BaseTestCase):
         """
         This test case specifically checks to see that none of the excluded directives (SSL focused) are parsed.
         """
-
         cfg = NginxConfigParser(ssl_config)
         tree = cfg.simplify()
 
@@ -178,3 +178,13 @@ class ParserTestCase(BaseTestCase):
         # ssl
         for directive in IGNORED_DIRECTIVES:
             assert_that(tree['server'][1], is_not(has_item(directive)))
+
+    def test_parse_bad_access_and_error_log(self):
+        """
+        Test case for NAAS-696, ignoring access_log and error_log edge cases.
+        """
+        cfg = NginxConfigParser(bad_log_directives)
+        tree = cfg.simplify()
+
+        assert_that(tree, not has_key('access_log'))
+        assert_that(tree, not has_key('error_log'))

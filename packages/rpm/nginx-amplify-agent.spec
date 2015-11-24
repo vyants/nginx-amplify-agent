@@ -115,6 +115,10 @@ fi
 
 
 %changelog
+* Tue Nov 24 2015 Mike Belov <dedm@nginx.com> 0.24-1
+- 0.24-1
+- Bug fixes
+
 * Wed Nov 18 2015 Mike Belov <dedm@nginx.com> 0.23-1
 - 0.23-1
 - Bug fixes

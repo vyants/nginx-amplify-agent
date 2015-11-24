@@ -102,8 +102,8 @@ class Bridge(Singleton):
                     child_data_found = True
                     root['children'].append(child_data)
 
-        self.queue[location].append(root)
         if child_data_found or not root_only_for_structure:
+            self.queue[location].append(root)
             context.default_log.debug(root)
             try:
                 self.client.post(location, data=self.queue[location])

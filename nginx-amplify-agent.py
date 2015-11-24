@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import sys
+import traceback
 import amplify
 
 amplify_path = '/'.join(amplify.__file__.split('/')[:-1])
@@ -11,12 +12,20 @@ monkey.patch_all(socket=False, ssl=False, select=False)
 
 from optparse import OptionParser, Option
 
+from amplify.agent.util import configreader
+
+
 __author__ = "Mike Belov"
 __copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
-__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev"]
+__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
 __email__ = "dedm@nginx.com"
+
+
+def test_config(config, pid):
+    rc = configreader.test(config, pid)
+    return rc
 
 
 usage = "usage: %prog [start|stop|configtest] [options]"
@@ -68,12 +77,12 @@ if __name__ == '__main__':
         sys.exit(1)
 
     if action == 'configtest':
-        from amplify.agent.util import configreader
-        rc = configreader.test(options.config, options.pid)
+        rc = test_config(options.config, options.pid)
         print ""
         sys.exit(rc)
     else:
         try:
+            test_config(options.config, options.pid)  # Check config before trying to start.
             from amplify.agent.context import context
             context.setup(
                 app='agent',
@@ -82,7 +91,7 @@ if __name__ == '__main__':
             )
         except:
             import traceback
-            print traceback.format_exc()
+            print traceback.format_exc(sys.exc_traceback)
 
         try:
             from amplify.agent.supervisor import Supervisor
@@ -95,4 +104,5 @@ if __name__ == '__main__':
             else:
                 supervisor.run()
         except:
-            context.default_log.error('failed to run', exc_info=True)
+            context.default_log.error('uncaught exception during run time', exc_info=True)
+            print traceback.format_exc(sys.exc_traceback)

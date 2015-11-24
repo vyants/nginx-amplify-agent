@@ -83,7 +83,7 @@ class NginxConfigParser(object):
         Word(alphanums + '$_:%?"~<>\/-+.,*()[]"' + "'").setParseAction(set_line_number)
 
     # values
-    value = Regex(r'[^{};]*"[^\";]+"|[^{};]*\'[^\';]+\'|[^{};]+(?!${.+})').setParseAction(set_line_number)
+    value = Regex(r'[^{};]*"[^\";]+"[^{};]*|[^{};]*\'[^\';]+\'|[^{};]+(?!${.+})').setParseAction(set_line_number)
     quotedValue = Regex(r'"[^;]+"|\'[^;]+\'').setParseAction(set_line_number)
     rewrite_value = CharsNotIn(";").setParseAction(set_line_number)
     any_value = CharsNotIn(";").setParseAction(set_line_number)
@@ -138,14 +138,14 @@ class NginxConfigParser(object):
     map_block << Group(
         Group(
             map_key + space + map_value + space + map_value + Optional(space)
-        ).setParseAction(set_line_number)
-        + left_brace
-        + Group(
+        ).setParseAction(set_line_number) +
+        left_brace +
+        Group(
             ZeroOrMore(
                 Group(map_value + Optional(space) + Optional(map_value) + Optional(space) + semicolon)
             ).setParseAction(set_line_number)
-        )
-        + right_brace
+        ) +
+        right_brace
     )
 
     block = Forward()
@@ -157,17 +157,17 @@ class NginxConfigParser(object):
                 Optional(value) + Optional(space)
             ) |
             Group(if_key + space + if_value + Optional(space))
-        ).setParseAction(set_line_number)
-        + left_brace
-        + Group(
+        ).setParseAction(set_line_number) +
+        left_brace +
+        Group(
             ZeroOrMore(
                  Group(log_format) | Group(lua_content) | Group(perl_set) |
                  Group(set) | Group(rewrite) | Group(alias) | Group(return_) |
                  Group(assignment) |
                  map_block | block
             ).setParseAction(set_line_number)
-        ).setParseAction(set_line_number)
-        + right_brace
+        ).setParseAction(set_line_number) +
+        right_brace
     )
 
     script = OneOrMore(
@@ -366,24 +366,50 @@ class NginxConfigParser(object):
 
                         included_files = self.__pyparse(value)
                         self.__logic_parse(included_files, result=result)
+                    elif key in ('access_log', 'error_log'):
+                        # Handle access_log and error_log edge cases
+                        if value == '' or '$' in value:
+                            continue  # Skip log directives that are empty or use nginx variables.
+
+                        # Otherwise handle normally (see ending else below).
+                        indexed_value = self.__idx_save(value, file_index, row.line_number)
+
+                        self.__simple_save(result, key, indexed_value)
                     else:
                         indexed_value = self.__idx_save(value, file_index, row.line_number)
 
-                        # simple key-value
-                        if key in result:
-                            stored_value = result[key]
-                            if isinstance(stored_value, list):
-                                result[key].append(indexed_value)
-                            else:
-                                result[key] = [stored_value, indexed_value]
-                        else:
-                            result[key] = indexed_value
+                        self.__simple_save(result, key, indexed_value)
+
         return result
 
     def __idx_save(self, value, file_index, line):
         new_index = len(self.index)
         self.index.append((file_index, line))
         return value, new_index
+
+    def __simple_save(self, result, key, indexed_value):
+        """
+        Because of NAAS-696, we ended up having duplicate code when adding key-value pairs to our parsing dictionary (
+        when handling access_log and error_log directives).
+
+        This prompted us to refactor this process out to a separate function.  Because dictionaries are passed by
+        reference in Python, we can alter the value dictionary in this local __func__ scope and have it affect the dict
+        in the parent (PYTHON MAGIC!?!?!?).
+
+        :param result: dict Passed and altered by reference from the parent __func__ scope
+        :param key:
+        :param indexed_value:
+        (No return since we are altering a pass-by-reference dict)
+        """
+        # simple key-value
+        if key in result:
+            stored_value = result[key]
+            if isinstance(stored_value, list):
+                result[key].append(indexed_value)
+            else:
+                result[key] = [stored_value, indexed_value]
+        else:
+            result[key] = indexed_value
     
     def simplify(self, tree=None):
         """

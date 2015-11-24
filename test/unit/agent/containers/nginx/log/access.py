@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from hamcrest import *
 
-from test.base import BaseTestCase
 from amplify.agent.containers.nginx.log.access import NginxAccessLogParser
+from test.base import BaseTestCase
 
 __author__ = "Mike Belov"
 __copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
@@ -162,8 +162,8 @@ class LogParserTestCase(BaseTestCase):
 
     def test_lonerr_config(self):
         user_format = '$remote_addr - $remote_user [$time_local] ' + \
-                     '"$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" ' + \
-                     'rt=$request_time ut="$upstream_response_time" cs=$upstream_cache_status'
+                      '"$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" ' + \
+                      'rt=$request_time ut="$upstream_response_time" cs=$upstream_cache_status'
 
         line = \
             '1.2.3.4 - - [22/Jan/2010:19:34:21 +0300] "GET /foo/ HTTP/1.1" 200 11078 ' + \
@@ -180,8 +180,8 @@ class LogParserTestCase(BaseTestCase):
         https://github.com/nginxinc/nginx-amplify-agent/issues/7
         """
         user_format = '$remote_addr - [$time_local] $request_method $scheme "$request_uri"  ' + \
-            '$status $request_time $body_bytes_sent  "$http_referer" ' + \
-            '"$http_user_agent" $host'
+                      '$status $request_time $body_bytes_sent  "$http_referer" ' + \
+                      '"$http_user_agent" $host'
 
         line = \
             '85.25.210.234 - [17/Nov/2015:00:20:50 +0100] GET https "/robots.txt"  200 0.024 240  "-" ' + \
@@ -192,3 +192,57 @@ class LogParserTestCase(BaseTestCase):
 
         assert_that(parsed, has_item('status'))
         assert_that(parsed, has_item('request_method'))
+
+    def test_recommended_config(self):
+        """
+        This test is modelled after our 'recommended' configuration format recently added to our docs.
+
+        https://github.com/nginxinc/nginx-amplify-doc/blob/master/amplify-guide.md#additional-http-metrics
+        """
+        user_format = \
+            '$remote_addr - $remote_user [$time_local] "$request" ' + \
+            ' $status $body_bytes_sent "$http_referer" ' + \
+            '"$http_user_agent" "$http_x_forwarded_for" ' + \
+            'rt=$request_time ua="$upstream_addr" ' + \
+            'us="$upstream_status" ut="$upstream_response_time" ' + \
+            'cs=$upstream_cache_status'
+
+        expected_keys = [
+            'remote_addr', 'remote_user', 'time_local', 'request', 'status', 'body_bytes_sent', 'http_referer',
+            'http_user_agent', 'http_x_forwarded_for', 'request_time', 'upstream_addr', 'upstream_status',
+            'upstream_response_time', 'upstream_cache_status'
+        ]
+
+        # first try to parse simple line
+        simple_line = \
+            '85.25.210.234 - - [22/Jan/2010:19:34:21 +0300] "GET /foo/ HTTP/1.1" ' + \
+            ' 200 11078 "http://www.rambler.ru/" ' + \
+            '"Mozilla/5.0 (Windows; U; Windows NT 5.1" "-" ' + \
+            'rt=0.024 ua="-" ' + \
+            'us="-" ut="0.024" ' + \
+            'cs="-"'
+
+        parser = NginxAccessLogParser(user_format)
+        parsed = parser.parse(simple_line)
+
+        for key in expected_keys:
+            assert_that(parsed, has_item(key))
+
+        # now try to parse request with /
+        simple_line = \
+            '85.25.210.234 - - [22/Jan/2010:19:34:21 +0300] "GET / HTTP/2.0" ' + \
+            ' 200 11078 "http://www.rambler.ru/" ' + \
+            '"Mozilla/5.0 (Windows; U; Windows NT 5.1" "-" ' + \
+            'rt=0.024 ua="-" ' + \
+            'us="-" ut="0.024" ' + \
+            'cs="-"'
+
+        parser = NginxAccessLogParser(user_format)
+        parsed = parser.parse(simple_line)
+
+        for key in expected_keys:
+            assert_that(parsed, has_item(key))
+
+        assert_that(parsed, has_item('request_uri'))
+        assert_that(parsed['request_uri'], equal_to('/'))
+        assert_that(parsed['http_version'], equal_to('2.0'))

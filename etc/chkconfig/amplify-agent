@@ -73,7 +73,6 @@ configtest(){
 
 case "$1" in
   start)
-	configtest || exit 1
 	start
 	RETVAL=$?
 	;;
@@ -82,7 +81,6 @@ case "$1" in
 	RETVAL=$?
 	;;
   restart)
-	configtest || exit 1
 	restart
 	RETVAL=$?
     ;;
