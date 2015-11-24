@@ -8,6 +8,37 @@ import zlib
 from amplify.agent import Singleton
 from amplify.agent.context import context
 
+requests.packages.urllib3.disable_warnings()
+"""
+
+WHY DO YOU DISABLE THIS WARNING?
+
+We don't want to show you redundant messages.
+
+
+IS IT A REAL PROBLEM?
+
+No. It is not a real problem.
+It's just a notification that urllib3 uses standard Python SSL library.
+
+
+GIVE ME MORE DETAILS!
+
+By default, urllib3 uses the standard library’s ssl module.
+Unfortunately, there are several limitations which are addressed by PyOpenSSL.
+
+In order to work with Python OpenSSL bindings urllib3 needs
+requests[security] to be installed, which contains cryptography,
+pyopenssl and other modules.
+
+The problem is we CAN'T ship Amplify with built-in OpenSSL & cryptography.
+You can install those libs manually and enable warnings back.
+
+More details: https://urllib3.readthedocs.org/en/latest/security.html#pyopenssl
+
+"""
+
+
 __author__ = "Mike Belov"
 __copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
 __credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
