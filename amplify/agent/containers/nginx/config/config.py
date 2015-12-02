@@ -39,20 +39,48 @@ class NginxConfig(object):
         self.error_logs = []
         self.stub_status = []
         self.plus_status = []
+        self.test_errors = []
+        self.tree = {}
+        self.files = {}
+        self.index = []
+        self.parser_errors = []
         self.parser = NginxConfigParser(filename)
 
-        # initial parsing
+    def full_parse(self):
+        context.log.debug('parsing full tree of %s' % self.filename)
+
+        # parse raw data
+        self.parser.parse()
+
         self.tree = self.parser.tree
         self.files = self.parser.files
         self.index = self.parser.index
         self.parser_errors = self.parser.errors
-        self.test_errors = []
 
         # go through and collect all logical data
         self.__recursive_search(subtree=self.parser.simplify())
 
         # try to locate and use default logs (PREFIX/logs/*)
         self.add_default_logs()
+
+    def get_all_files(self):
+        """
+        Goes through all files (light-parsed includes) and collects their mtime
+        :return: {} - dict of files
+        """
+        result = self.parser.collect_all_files()
+        context.log.debug('collected %s files' % len(result.keys()))
+        return result
+
+    def total_size(self):
+        """
+        Returns the total size of a config tree
+        :return: int size in bytes
+        """
+        result = 0
+        for file_name, file_info in self.files.iteritems():
+            result += file_info['size']
+        return result
 
     def __recursive_search(self, subtree=None, ctx=None):
         """

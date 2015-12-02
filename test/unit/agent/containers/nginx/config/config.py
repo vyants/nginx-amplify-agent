@@ -25,6 +25,7 @@ class ConfigTestCase(BaseTestCase):
 
     def test_parse_simple(self):
         config = NginxConfig(simple_config)
+        config.full_parse()
 
         # error logs
         assert_that(config.error_logs, has_length(1))
@@ -59,6 +60,7 @@ class ConfigTestCase(BaseTestCase):
 
     def test_parse_huge(self):
         config = NginxConfig(huge_config)
+        config.full_parse()
 
         # error logs
         assert_that(config.error_logs, has_length(1))
@@ -87,6 +89,7 @@ class ConfigTestCase(BaseTestCase):
 
     def test_parse_complex(self):
         config = NginxConfig(complex_config)
+        config.full_parse()
 
         context.log.info(config.index)
         context.log.info(config.tree)
@@ -107,12 +110,14 @@ class ConfigTestCase(BaseTestCase):
 
     def test_broken(self):
         config = NginxConfig(broken_config)
+        config.full_parse()
 
         assert_that(config.tree, equal_to({}))
         assert_that(config.parser_errors, has_length(1))
 
     def test_broken_includes(self):
         config = NginxConfig(huge_config)
+        config.full_parse()
 
         assert_that(config.tree, not_(equal_to({})))
         assert_that(config.parser_errors, has_length(5))  # 5 missing includes

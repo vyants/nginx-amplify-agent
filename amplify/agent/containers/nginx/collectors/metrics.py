@@ -34,6 +34,7 @@ class NginxMetricsCollector(AbstractCollector):
         super(NginxMetricsCollector, self).__init__(**kwargs)
 
         self.processes = [Process(pid) for pid in self.object.workers]
+        self.zombies = set()
         self.http_client = HTTPClient()
 
     def collect(self):
@@ -75,6 +76,14 @@ class NginxMetricsCollector(AbstractCollector):
         """nginx.workers.count"""
         self.statsd.gauge('workers.count', len(self.object.workers))
 
+    def handle_zombie(self, pid):
+        """
+        removes pid from workers list
+        :param pid: zombie pid
+        """
+        context.log.warning('zombie process %s found' % pid)
+        self.zombies.add(pid)
+
     def memory_info(self):
         """
         memory info
@@ -85,10 +94,16 @@ class NginxMetricsCollector(AbstractCollector):
         """
         rss, vms, pct = 0, 0, 0.0
         for p in self.processes:
-            mem_info = p.memory_info()
-            rss += mem_info.rss
-            vms += mem_info.vms
-            pct += p.memory_percent()
+            if p.pid in self.zombies:
+                continue
+            try:
+                mem_info = p.memory_info()
+                rss += mem_info.rss
+                vms += mem_info.vms
+                pct += p.memory_percent()
+            except psutil.ZombieProcess:
+                self.handle_zombie(p.pid)
+
         self.statsd.gauge('workers.mem.rss', rss)
         self.statsd.gauge('workers.mem.vms', vms)
         self.statsd.gauge('workers.mem.rss_pct', pct)
@@ -97,7 +112,12 @@ class NginxMetricsCollector(AbstractCollector):
         """nginx.workers.fds_count"""
         fds = 0
         for p in self.processes:
-            fds += p.num_fds()
+            if p.pid in self.zombies:
+                continue
+            try:
+                fds += p.num_fds()
+            except psutil.ZombieProcess:
+                self.handle_zombie(p.pid)
         self.statsd.incr('workers.fds_count', fds)
 
     def workers_rlimit_nofile(self):
@@ -108,7 +128,12 @@ class NginxMetricsCollector(AbstractCollector):
         """
         rlimit = 0
         for p in self.processes:
-            rlimit += p.rlimit_nofile()
+            if p.pid in self.zombies:
+                continue
+            try:
+                rlimit += p.rlimit_nofile()
+            except psutil.ZombieProcess:
+                self.handle_zombie(p.pid)
         self.statsd.gauge('workers.rlimit_nofile', rlimit)
 
     def workers_io(self):
@@ -121,9 +146,14 @@ class NginxMetricsCollector(AbstractCollector):
         # collect raw data
         read, write = 0, 0
         for p in self.processes:
-            io = p.io_counters()
-            read += io.read_bytes
-            write += io.write_bytes
+            if p.pid in self.zombies:
+                continue
+            try:
+                io = p.io_counters()
+                read += io.read_bytes
+                write += io.write_bytes
+            except psutil.ZombieProcess:
+                self.handle_zombie(p.pid)
         current_stamp = int(time.time())
 
         # kilobytes!
@@ -147,9 +177,14 @@ class NginxMetricsCollector(AbstractCollector):
         """
         worker_user, worker_sys = 0.0, 0.0
         for p in self.processes:
-            u, s = p.cpu_percent()
-            worker_user += u
-            worker_sys += s
+            if p.pid in self.zombies:
+                continue
+            try:
+                u, s = p.cpu_percent()
+                worker_user += u
+                worker_sys += s
+            except psutil.ZombieProcess:
+                self.handle_zombie(p.pid)
         self.statsd.gauge('workers.cpu.total', worker_user + worker_sys)
         self.statsd.gauge('workers.cpu.user', worker_user)
         self.statsd.gauge('workers.cpu.system', worker_sys)

@@ -8,7 +8,7 @@ from threading import current_thread
 from amplify.agent.util import memusage
 from amplify.agent.context import context
 from amplify.agent import Singleton
-from amplify.agent.util.http import HTTPClient
+
 
 __author__ = "Mike Belov"
 __copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
@@ -19,8 +19,8 @@ __email__ = "dedm@nginx.com"
 
 
 class Bridge(Singleton):
-    def __init__(self):
-        self.client = HTTPClient()
+    def __init__(self, http_client):
+        self.client = http_client
         self.queue = defaultdict(list)
         self.first_run = True
 

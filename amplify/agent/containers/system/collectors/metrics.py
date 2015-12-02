@@ -75,8 +75,13 @@ class SystemMetricsCollector(AbstractCollector):
         cpu_times = psutil.cpu_times_percent()
         self.statsd.gauge('cpu.user', cpu_times.user)
         self.statsd.gauge('cpu.system', cpu_times.system)
-        self.statsd.gauge('cpu.iowait', cpu_times.iowait)
         self.statsd.gauge('cpu.idle', cpu_times.idle)
+
+        if hasattr(cpu_times, 'iowait'):
+            self.statsd.gauge('cpu.iowait', cpu_times.iowait)
+
+        if hasattr(cpu_times, 'steal'):
+            self.statsd.gauge('cpu.stolen', cpu_times.steal)
 
     def disk_partitions(self):
         """ disk partitions usage """
@@ -85,18 +90,22 @@ class SystemMetricsCollector(AbstractCollector):
             if 'cdrom' in part.opts or part.fstype == '':
                 continue
             usage = psutil.disk_usage(part.mountpoint)
-            mountpoint = part.mountpoint
             overall_used += usage.used
             overall_total += usage.total
             overall_free += usage.free
-            self.statsd.gauge('disk.total|%s' % mountpoint, usage.total)
-            self.statsd.gauge('disk.used|%s' % mountpoint, usage.used)
-            self.statsd.gauge('disk.free|%s' % mountpoint, usage.free)
-            self.statsd.gauge('disk.in_use|%s' % mountpoint, float(usage.used) / float(usage.total) * 100.0)
+            self.statsd.gauge('disk.total|%s' % part.mountpoint, usage.total)
+            self.statsd.gauge('disk.used|%s' % part.mountpoint, usage.used)
+            self.statsd.gauge('disk.free|%s' % part.mountpoint, usage.free)
+
+            in_use = float(usage.used) / float(usage.total) * 100.0 if usage.total else 0.0
+            self.statsd.gauge('disk.in_use|%s' % part.mountpoint, in_use)
+
         self.statsd.gauge('disk.total', overall_total)
         self.statsd.gauge('disk.used', overall_used)
         self.statsd.gauge('disk.free', overall_free)
-        self.statsd.gauge('disk.in_use', float(overall_used) / float(overall_total) * 100.0)
+
+        in_use_total = float(overall_used) / float(overall_total) * 100.0 if overall_total else 0.0
+        self.statsd.gauge('disk.in_use', in_use_total)
 
     def disk_io_counters(self):
         """ disk io counters """

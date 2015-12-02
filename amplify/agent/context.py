@@ -27,7 +27,7 @@ class Context(Singleton):
     def __init__(self):
         self.pid = os.getpid()
 
-        self.version = '0.24-2'  # Major.Minor-Build
+        self.version = '0.25-1'  # Major.Minor-Build
 
         self.default_log = None
         self.app_name = None

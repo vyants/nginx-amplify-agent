@@ -22,13 +22,16 @@ broken_config = os.getcwd() + '/test/fixtures/nginx/broken/nginx.conf'
 rewrites_config = os.getcwd() + '/test/fixtures/nginx/rewrites/nginx.conf'
 map_lua_perl = os.getcwd() + '/test/fixtures/nginx/map_lua_perl/nginx.conf'
 ssl_config = os.getcwd() + '/test/fixtures/nginx/ssl/nginx.conf'
-bad_log_directives = os.getcwd() + '/test/fixtures/nginx/broken/bad_logs.conf'
+bad_log_directives_config = os.getcwd() + '/test/fixtures/nginx/broken/bad_logs.conf'
+includes_config = os.getcwd() + '/test/fixtures/nginx/includes/nginx.conf'
 
 
 class ParserTestCase(BaseTestCase):
 
     def test_parse_simple(self):
         cfg = NginxConfigParser(simple_config)
+
+        cfg.parse()
         tree = cfg.simplify()
         indexed_tree = cfg.tree
 
@@ -74,6 +77,8 @@ class ParserTestCase(BaseTestCase):
 
     def test_parse_huge(self):
         cfg = NginxConfigParser(huge_config)
+
+        cfg.parse()
         tree = cfg.simplify()
         indexed_tree = cfg.tree
 
@@ -98,6 +103,8 @@ class ParserTestCase(BaseTestCase):
 
     def test_parse_complex(self):
         cfg = NginxConfigParser(complex_config)
+
+        cfg.parse()
         tree = cfg.simplify()
         indexed_tree = cfg.tree
 
@@ -130,6 +137,8 @@ class ParserTestCase(BaseTestCase):
 
     def test_parse_rewrites(self):
         cfg = NginxConfigParser(rewrites_config)
+
+        cfg.parse()
         tree = cfg.simplify()
 
         # common structure
@@ -146,6 +155,8 @@ class ParserTestCase(BaseTestCase):
 
     def test_parse_map_lua_perl(self):
         cfg = NginxConfigParser(map_lua_perl)
+
+        cfg.parse()
         tree = cfg.simplify()
 
         # common structure
@@ -171,6 +182,8 @@ class ParserTestCase(BaseTestCase):
         This test case specifically checks to see that none of the excluded directives (SSL focused) are parsed.
         """
         cfg = NginxConfigParser(ssl_config)
+
+        cfg.parse()
         tree = cfg.simplify()
 
         assert_that(tree, has_key('server'))
@@ -183,8 +196,31 @@ class ParserTestCase(BaseTestCase):
         """
         Test case for NAAS-696, ignoring access_log and error_log edge cases.
         """
-        cfg = NginxConfigParser(bad_log_directives)
+        cfg = NginxConfigParser(bad_log_directives_config)
+
+        cfg.parse()
         tree = cfg.simplify()
 
         assert_that(tree, not has_key('access_log'))
         assert_that(tree, not has_key('error_log'))
+
+    def test_lightweight_parse_includes(self):
+        # simple
+        cfg = NginxConfigParser(simple_config)
+        files = cfg.collect_all_files()
+        assert_that(files.keys(), equal_to([
+            '/amplify/test/fixtures/nginx/simple/conf.d/something.conf',
+            '/amplify/test/fixtures/nginx/simple/mime.types',
+            '/amplify/test/fixtures/nginx/simple/nginx.conf'
+        ]))
+
+        # includes
+        cfg = NginxConfigParser(includes_config)
+        files = cfg.collect_all_files()
+        assert_that(files.keys(), equal_to([
+            '/amplify/test/fixtures/nginx/includes/conf.d/something.conf',
+            '/amplify/test/fixtures/nginx/includes/mime.types',
+            '/amplify/test/fixtures/nginx/includes/conf.d/additional.conf',
+            '/amplify/test/fixtures/nginx/includes/conf.d/include.conf',
+            '/amplify/test/fixtures/nginx/includes/nginx.conf'
+        ]))

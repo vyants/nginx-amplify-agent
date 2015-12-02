@@ -115,6 +115,12 @@ fi
 
 
 %changelog
+* Wed Dec 3 2015 Mike Belov <dedm@nginx.com> 0.25-1
+- 0.25-1
+- Bug fixes
+- New metric: system.cpu.stolen
+- Nginx config parsing improved
+
 * Tue Nov 24 2015 Mike Belov <dedm@nginx.com> 0.24-2
 - 0.24-2
 - Bug fixes

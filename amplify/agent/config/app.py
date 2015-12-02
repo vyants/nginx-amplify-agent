@@ -21,6 +21,7 @@ class Config(AbstractConfig):
         containers=dict(
         ),
         cloud=dict(
+            talk_interval=120.0,
             push_interval=20.0,
             api_url=None,
             api_timeout=5.0,

@@ -176,8 +176,12 @@ class NginxConfigParser(object):
         map_block | block
     ).ignore(pythonStyleComment)
 
+
+    INCLUDE_RE = re.compile(r'.*include\s+(?P<include_file>.*);')
+
     def __init__(self, filename='/etc/nginx/nginx.conf'):
         global tokens_cache
+        tokens_cache = {}
 
         self.filename = filename
         self.files = {}  # to prevent cycle files and line indexing
@@ -185,17 +189,46 @@ class NginxConfigParser(object):
         self.index = []  # stores index for all sections (points to file number and line number)
         self.folder = '/'.join(self.filename.split('/')[:-1])  # stores path to folder with main config
         self.errors = []
+        self.tree = {}
 
-        tokens_cache = {}
-        
-        # parse
+    def parse(self):
         self.tree = self.__logic_parse(self.__pyparse(self.filename))
 
-    def __pyparse(self, path):
+    def collect_all_files(self):
         """
-        Loads and parses all files
+        Tries to collect all included files and to return them as dict with mtimes and sizes
+        :return: {} of files
+        """
+        all_files = {}
 
-        :param path: file path (can contain *)
+        def lightweight_include_search(include_files):
+            for filename in include_files:
+                if filename in all_files:
+                    continue
+
+                # set mtime
+                all_files[filename] = int(os.path.getmtime(filename))
+
+                try:
+                    for line in open(filename):
+                        if 'include' in line:
+                            gre = self.INCLUDE_RE.match(line)
+                            if gre:
+                                new_includes = self.find_includes(gre.group('include_file'))
+                                lightweight_include_search(new_includes)
+                except Exception, e:
+                    exception_name = e.__class__.__name__
+                    message = 'failed to load %s due to: %s' % (filename, exception_name)
+                    context.log.debug(message, exc_info=True)
+
+        lightweight_include_search(self.find_includes(self.filename))
+        return all_files
+
+    def find_includes(self, path):
+        """
+        Takes include path and returns all included files
+        :param path: str path
+        :return: [] of str filenames
         """
 
         # resolve local paths
@@ -204,17 +237,23 @@ class NginxConfigParser(object):
             path = '%s/%s' % (self.folder, path)
 
         # load all files
-        current_files = []
+        filenames = []
         if '*' in path:
             for filename in glob.glob(path):
-                current_files.append(filename)
+                filenames.append(filename)
         else:
-            current_files.append(path)
+            filenames.append(path)
 
-        # open each include and parse it
+        return filenames
+
+    def __pyparse(self, path):
+        """
+        Loads and parses all files
+
+        :param path: file path (can contain *)
+        """
         result = {}
-
-        for filename in current_files:
+        for filename in self.find_includes(path):
             if filename in self.broken_files:
                 continue
             elif filename not in self.files:
@@ -373,11 +412,9 @@ class NginxConfigParser(object):
 
                         # Otherwise handle normally (see ending else below).
                         indexed_value = self.__idx_save(value, file_index, row.line_number)
-
                         self.__simple_save(result, key, indexed_value)
                     else:
                         indexed_value = self.__idx_save(value, file_index, row.line_number)
-
                         self.__simple_save(result, key, indexed_value)
 
         return result
@@ -389,7 +426,7 @@ class NginxConfigParser(object):
 
     def __simple_save(self, result, key, indexed_value):
         """
-        Because of NAAS-696, we ended up having duplicate code when adding key-value pairs to our parsing dictionary (
+        We ended up having duplicate code when adding key-value pairs to our parsing dictionary (
         when handling access_log and error_log directives).
 
         This prompted us to refactor this process out to a separate function.  Because dictionaries are passed by
@@ -416,6 +453,7 @@ class NginxConfigParser(object):
         returns tree without index references
         can be used for debug/pretty output
 
+        :param tree: - dict of tree
         :return: dict of self.tree without index positions
         """
         result = {}

@@ -85,7 +85,7 @@ class Supervisor(Singleton):
             return
 
         # run bridge thread
-        self.bridge = spawn(Bridge().run)
+        self.bridge = spawn(Bridge(self.client).run)
 
         # main cycle
         while self.is_running:
@@ -110,14 +110,14 @@ class Supervisor(Singleton):
         for container in self.containers.itervalues():
             container.stop_objects()
 
-        Bridge().flush_metrics()
-        Bridge().flush_events()
+        self.bridge.flush_metrics()
+        self.bridge.flush_events()
 
     def talk_with_cloud(self, top_object=None):
         # TODO: receive commands from cloud
 
         now = int(time.time())
-        if now <= self.last_cloud_talk_time + 60:
+        if now <= self.last_cloud_talk_time + context.app_config['cloud']['talk_interval']:
             return
 
         # talk to cloud
@@ -160,9 +160,6 @@ class Supervisor(Singleton):
         """
         Check containers threads, restart if some failed
         """
-        bridge_state = 'OK' if not self.bridge.ready() else 'STOP'
-        # context.log.debug('bridge status: %s' % bridge_state)
-
         if self.bridge.ready and self.bridge.exception:
             context.log.debug('bridge exception: %s' % self.bridge.exception)
-            self.bridge = gevent.spawn(Bridge().run)
+            self.bridge = gevent.spawn(Bridge(self.client).run)

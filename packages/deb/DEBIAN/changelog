@@ -1,3 +1,11 @@
+nginx-amplify-agent (0.25-1) unstable; urgency=low
+
+  * Bug fixes
+  * New metric: system.cpu.stolen
+  * Nginx config parsing improved
+
+ -- Mike Belov <dedm@nginx.com>  Wed, 3 Dec 2015 11:00:00 -0800
+
 nginx-amplify-agent (0.24-2) unstable; urgency=low
 
   * Bug fixes

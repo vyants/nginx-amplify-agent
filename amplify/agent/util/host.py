@@ -155,10 +155,11 @@ def block_devices():
     :return: [] of str
     """
     result = []
-    for device in os.listdir('/sys/block/'):
-        pointed_at = os.readlink('/sys/block/%s' % device)
-        if '/virtual/' not in pointed_at:
-            result.append(device)
+    if os.path.exists('/sys/block/'):
+        for device in os.listdir('/sys/block/'):
+            pointed_at = os.readlink('/sys/block/%s' % device)
+            if '/virtual/' not in pointed_at:
+                result.append(device)
     return result
 
 
@@ -174,7 +175,9 @@ def alive_interfaces():
         for interface_name, interface in psutil.net_if_stats().iteritems():
             if interface.isup:
                 alive_interfaces.add(interface_name)
-    except OSError:
+    except:
+        context.log.debug('failed to use psutil.net_if_stats', exc_info=True)
+
         # fallback for centos6
         for interface_name in netifaces.interfaces():
             ip_link_out, _ = subp.call("ip link show dev %s" % interface_name, check=False)
@@ -185,4 +188,5 @@ def alive_interfaces():
                     state = r.group(1)
                     if interface_name == 'lo' or state == 'UP':
                         alive_interfaces.add(interface_name)
+
     return alive_interfaces
