@@ -37,6 +37,8 @@ class NginxObject(AbstractObject):
         self.conf_path = self.data['conf_path']
 
         self.config = NginxConfig(self.conf_path, prefix=self.prefix)
+        self.config.full_parse()
+
         self.plus_status_url = self.get_alive_plus_status_url()
         self.plus_status_enabled = True if self.plus_status_url else False
         self.stub_status_url = self.get_alive_stub_status_url()
