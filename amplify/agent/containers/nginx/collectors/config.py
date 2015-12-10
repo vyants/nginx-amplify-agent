@@ -4,7 +4,6 @@ import copy
 from amplify.agent.context import context
 from amplify.agent.containers.nginx.config.config import NginxConfig
 from amplify.agent.containers.abstract import AbstractCollector
-from amplify.agent.util.http import HTTPClient
 from amplify.agent.eventd import CRITICAL, WARNING, INFO
 
 __author__ = "Mike Belov"
@@ -24,7 +23,6 @@ class NginxConfigCollector(AbstractCollector):
 
         self.previous_files = {}
         self.previous_checksum = None
-        self.client = HTTPClient()
 
     def collect(self):
         try:
@@ -87,7 +85,7 @@ class NginxConfigCollector(AbstractCollector):
 
             self.previous_checksum = checksum
             self.previous_files = copy.copy(all_config_files)
-        except Exception, e:
+        except Exception as e:
             exception_name = e.__class__.__name__
             context.log.error('failed to collect due to %s' % exception_name)
             context.log.debug('additional info:', exc_info=True)

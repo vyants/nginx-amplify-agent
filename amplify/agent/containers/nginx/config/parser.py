@@ -87,7 +87,7 @@ class NginxConfigParser(object):
     quotedValue = Regex(r'"[^;]+"|\'[^;]+\'').setParseAction(set_line_number)
     rewrite_value = CharsNotIn(";").setParseAction(set_line_number)
     any_value = CharsNotIn(";").setParseAction(set_line_number)
-    map_value = Regex(r'\'[^\']*\'|"[^"*]*"|[^{};\s]+').setParseAction(set_line_number)
+    map_value = Regex(r'\'[^\']*\'|"[^"*]*"|((\\\s|[^{};\s])*)').setParseAction(set_line_number)
     if_value = Regex(r'\(.*\)').setParseAction(set_line_number)
     language_include_value = CharsNotIn("'").setParseAction(set_line_number)
     strict_value = CharsNotIn("{};").setParseAction(set_line_number)
@@ -176,7 +176,6 @@ class NginxConfigParser(object):
         map_block | block
     ).ignore(pythonStyleComment)
 
-
     INCLUDE_RE = re.compile(r'.*include\s+(?P<include_file>.*);')
 
     def __init__(self, filename='/etc/nginx/nginx.conf'):
@@ -216,7 +215,7 @@ class NginxConfigParser(object):
                             if gre:
                                 new_includes = self.find_includes(gre.group('include_file'))
                                 lightweight_include_search(new_includes)
-                except Exception, e:
+                except Exception as e:
                     exception_name = e.__class__.__name__
                     message = 'failed to load %s due to: %s' % (filename, exception_name)
                     context.log.debug(message, exc_info=True)
@@ -281,7 +280,7 @@ class NginxConfigParser(object):
                 lines_count = source.count('\n')
 
                 self.files[filename]['lines'] = lines_count
-            except Exception, e:
+            except Exception as e:
                 exception_name = e.__class__.__name__
                 message = 'failed to load %s due to: %s' % (filename, exception_name)
                 self.errors.append(message)
@@ -308,7 +307,7 @@ class NginxConfigParser(object):
 
             try:
                 parsed = self.script.parseString(source, parseAll=True)
-            except Exception, e:
+            except Exception as e:
                 exception_name = e.__class__.__name__
                 message = 'failed to parse %s due to %s' % (filename, exception_name)
                 self.errors.append(message)

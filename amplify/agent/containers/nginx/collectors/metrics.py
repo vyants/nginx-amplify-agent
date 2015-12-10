@@ -3,7 +3,6 @@ import re
 import time
 import psutil
 
-from amplify.agent.util.http import HTTPClient
 from amplify.agent.util.ps import Process
 from amplify.agent.errors import AmplifyParseException
 from amplify.agent.context import context
@@ -35,7 +34,6 @@ class NginxMetricsCollector(AbstractCollector):
 
         self.processes = [Process(pid) for pid in self.object.workers]
         self.zombies = set()
-        self.http_client = HTTPClient()
 
     def collect(self):
         for method in (
@@ -49,7 +47,7 @@ class NginxMetricsCollector(AbstractCollector):
         ):
             try:
                 method()
-            except psutil.NoSuchProcess, e:
+            except psutil.NoSuchProcess as e:
                 exception_name = e.__class__.__name__
 
                 # Log exception
@@ -58,7 +56,7 @@ class NginxMetricsCollector(AbstractCollector):
                     (method.__name__, exception_name)
                 )
                 self.object.need_restart = True
-            except Exception, e:
+            except Exception as e:
                 exception_name = e.__class__.__name__
 
                 # Fire event warning.
@@ -215,7 +213,7 @@ class NginxMetricsCollector(AbstractCollector):
         # get stub status body
 
         try:
-            stub_body = self.http_client.get(self.object.stub_status_url, timeout=1, json=False)
+            stub_body = context.http_client.get(self.object.stub_status_url, timeout=1, json=False)
         except:
             context.log.error('failed to check stub_status url %s' % self.object.stub_status_url)
             context.log.debug('additional info', exc_info=True)

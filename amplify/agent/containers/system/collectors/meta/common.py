@@ -67,7 +67,7 @@ class SystemCommonMetaCollector(AbstractCollector):
         ):
             try:
                 method(meta)
-            except Exception, e:
+            except Exception as e:
                 exception_name = e.__class__.__name__
                 context.log.error('failed to collect meta %s due to %s' % (method.__name__, exception_name))
                 context.log.debug('additional info:', exc_info=True)

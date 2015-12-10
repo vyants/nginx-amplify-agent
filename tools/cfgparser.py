@@ -19,7 +19,7 @@ from amplify.agent.containers.nginx.config.config import NginxConfig
 
 __author__ = "Mike Belov"
 __copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
-__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev"]
+__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
 __email__ = "dedm@nginx.com"
@@ -61,31 +61,32 @@ if __name__ == '__main__':
         filename = options.config
 
     cfg = NginxConfig(filename=filename)
+    cfg.full_parse()
 
     print_args = dict(indent=4, sort_keys=True) if options.pretty else dict()
-    print '\033[32mConfig tree for %s\033[0m' % filename
-    print json.dumps(cfg.tree, **print_args)
+    print('\033[32mConfig tree for %s\033[0m' % filename)
+    print(json.dumps(cfg.tree, **print_args))
 
-    print '\n\033[32mConfig index for %s\033[0m' % filename
-    print json.dumps(cfg.index, **print_args)
+    print('\n\033[32mConfig index for %s\033[0m' % filename)
+    print(json.dumps(cfg.index, **print_args))
 
-    print '\n\033[32mConfig files for %s\033[0m' % filename
-    print json.dumps(cfg.files, **print_args)
+    print('\n\033[32mConfig files for %s\033[0m' % filename)
+    print(json.dumps(cfg.files, **print_args))
 
-    print '\n\033[32mStub/plus status %s\033[0m' % filename
-    print json.dumps(cfg.stub_status, **print_args)
-    print json.dumps(cfg.plus_status, **print_args)
+    print('\n\033[32mStub/plus status %s\033[0m' % filename)
+    print(json.dumps(cfg.stub_status, **print_args))
+    print(json.dumps(cfg.plus_status, **print_args))
 
-    print '\n\033[32mAccess logs %s\033[0m' % filename
-    print json.dumps(cfg.access_logs, **print_args)
+    print('\n\033[32mAccess logs %s\033[0m' % filename)
+    print(json.dumps(cfg.access_logs, **print_args))
 
-    print '\n\033[32mError logs %s\033[0m' % filename
-    print json.dumps(cfg.error_logs, **print_args)
+    print('\n\033[32mError logs %s\033[0m' % filename)
+    print(json.dumps(cfg.error_logs, **print_args))
 
-    print '\n\033[32mLog formats %s\033[0m' % filename
-    print json.dumps(cfg.log_formats, **print_args)
+    print('\n\033[32mLog formats %s\033[0m' % filename)
+    print(json.dumps(cfg.log_formats, **print_args))
 
-    print '\n\033[32mConfig errors for %s\033[0m' % filename
-    print json.dumps(cfg.parser_errors, **print_args)
+    print('\n\033[32mConfig errors for %s\033[0m' % filename)
+    print(json.dumps(cfg.parser_errors, **print_args))
 
 

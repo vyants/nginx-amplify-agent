@@ -5,7 +5,7 @@ import os
 
 __author__ = "Mike Belov"
 __copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
-__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev"]
+__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
 __email__ = "dedm@nginx.com"
@@ -20,7 +20,7 @@ def shell_call(cmd, terminal=False, important=True):
     :param important: stops the script if shell command returns non-zero exit code
     :return:
     """
-    print '\033[32m%s\033[0m' % cmd
+    print('\033[32m%s\033[0m' % cmd)
 
     if terminal:
         os.system(cmd)
@@ -31,20 +31,20 @@ def shell_call(cmd, terminal=False, important=True):
         # print normal results
         for line in results.split('\n'):
             if line:
-                print line
+                print(line)
 
         # print warnings and errors
         sys.stdout.write('\033[33m')
         for line in errors.split('\n'):
             if line:
-                print line
+                print(line)
         sys.stdout.write('\033[0m')
-        print ''
+        print('')
 
         # check
         process.wait()
         if important and process.returncode != 0:
-            print '\033[31mFAILED!\033[0m'
+            print('\033[31mFAILED!\033[0m')
             sys.exit(1)
         else:
             return results

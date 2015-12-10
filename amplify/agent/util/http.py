@@ -51,25 +51,29 @@ class HTTPClient(Singleton):
 
     def __init__(self):
         config = context.app_config
-        self.url = '%s/%s' % (config['cloud']['api_url'], config['credentials']['api_key'])
         self.timeout = float(config['cloud']['api_timeout'])
         self.verify_ssl = config['cloud']['verify_ssl']
         self.gzip = config['cloud']['gzip']
+        self.session = None
+        self.url = None
 
+        self.proxies = config.get('proxies')  # Support old configs which don't have 'proxies' section
+        if self.proxies is not None and self.proxies['https'] == '':
+            self.proxies = None  # Pass None to trigger requests default scraping of environment variables
+
+        self.update_cloud_url()
+
+        logging.getLogger("requests").setLevel(logging.WARNING)
+
+    def update_cloud_url(self):
+        config = context.app_config
+        self.url = '%s/%s' % (config['cloud']['api_url'], config['credentials']['api_key'])
         content_type = 'binary/octet-stream' if self.gzip else 'application/json'
-
         self.session = requests.Session()
         self.session.headers.update({
             'Content-Type': content_type,
             'User-Agent': 'nginx-amplify-agent/%s' % context.version
         })
-
-        self.proxies = config.get('proxies')  # Support old configs which don't have 'proxies' section
-
-        if self.proxies is not None and self.proxies['https'] == '':
-            self.proxies = None  # Pass None to trigger requests default scraping of environment variables
-
-        logging.getLogger("requests").setLevel(logging.WARNING)
 
     def make_request(self, location, method, data=None, timeout=None, json=True, log=True):
         url = location if location.startswith('http') else '%s/%s' % (self.url, location)
@@ -99,7 +103,7 @@ class HTTPClient(Singleton):
             r.raise_for_status()
             result = r.json() if json else r.text
             return result
-        except Exception, e:
+        except Exception as e:
             if log:
                 context.default_log.error('failed to %s "%s", exception: "%s"' % (method, url, e.message))
                 context.default_log.debug('', exc_info=True)

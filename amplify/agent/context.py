@@ -2,7 +2,6 @@
 import os
 import sys
 import time
-import thread
 from itertools import cycle
 
 from amplify.agent import Singleton
@@ -10,6 +9,13 @@ from amplify.agent.statsd import StatsdContainer
 from amplify.agent.eventd import EventdContainer
 from amplify.agent.metad import MetadContainer
 from amplify.agent.configd import ConfigdContainer
+
+
+try:
+    import thread
+except ImportError:
+    # Renamed in Python 3
+    import _thread as thread
 
 
 __author__ = "Mike Belov"
@@ -27,8 +33,9 @@ class Context(Singleton):
     def __init__(self):
         self.pid = os.getpid()
 
-        self.version = '0.25-1'  # Major.Minor-Build
-
+        self.version = '0.26-1'  # Major.Minor-Build
+        self.environment = None
+        self.http_client = None
         self.default_log = None
         self.app_name = None
         self.app_config = None
@@ -43,18 +50,19 @@ class Context(Singleton):
         self.start_time = int(time.time())
 
         self.setup_thread_id()
-        self._setup_environment()
+        self.setup_environment()
 
-    def setup(self, **kwargs):
-        self._setup_app_config(**kwargs)
-        self._setup_app_logs(**kwargs)
-        self._setup_host_details()
-
-    def _setup_environment(self):
+    def setup_environment(self):
         """
         Setup common environment vars
         """
         self.environment = os.environ.get('AMPLIFY_ENVIRONMENT', 'production')
+
+    def setup(self, **kwargs):
+        self._setup_app_config(**kwargs)
+        self._setup_app_logs()
+        self._setup_host_details()
+        self._setup_http_client()
 
     def _setup_app_config(self, **kwargs):
         self.app_name = kwargs.get('app')
@@ -72,7 +80,7 @@ class Context(Singleton):
             # as a daemon or in the foreground (or generically using self.app_config.get('daemon') which will return
             # None if running in foreground).
 
-    def _setup_app_logs(self, **kwargs):
+    def _setup_app_logs(self):
         from amplify.agent.util import logger
         logger.setup(self.app_config.filename)
         self.default_log = logger.get('%s-default' % self.app_name)
@@ -81,6 +89,10 @@ class Context(Singleton):
         from amplify.agent.util.host import hostname, uuid
         self.hostname = hostname()
         self.uuid = uuid()
+
+    def _setup_http_client(self):
+        from amplify.agent.util.http import HTTPClient
+        self.http_client = HTTPClient()
 
     def get_file_handlers(self):
         return [

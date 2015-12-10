@@ -87,7 +87,7 @@ class NginxObject(AbstractObject):
 
                 # Send access log discovery event.
                 self.eventd.event(level=INFO, message='nginx access log %s found' % log_filename)
-            except IOError, e:
+            except IOError as e:
                 exception_name = e.__class__.__name__
                 context.log.error(
                     'failed to start reading log %s due to %s (maybe has no rights?)' %
@@ -108,7 +108,7 @@ class NginxObject(AbstractObject):
 
                 # Send error log discovery event.
                 self.eventd.event(level=INFO, message='nginx error log %s found' % log_filename)
-            except IOError, e:
+            except IOError as e:
                 exception_name = e.__class__.__name__
                 context.log.error(
                     'failed to start reading log %s due to %s (maybe has no rights?)' %

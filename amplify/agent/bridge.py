@@ -12,15 +12,14 @@ from amplify.agent import Singleton
 
 __author__ = "Mike Belov"
 __copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
-__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev"]
+__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
 __email__ = "dedm@nginx.com"
 
 
 class Bridge(Singleton):
-    def __init__(self, http_client):
-        self.client = http_client
+    def __init__(self):
         self.queue = defaultdict(list)
         self.first_run = True
 
@@ -106,9 +105,9 @@ class Bridge(Singleton):
             self.queue[location].append(root)
             context.default_log.debug(root)
             try:
-                self.client.post(location, data=self.queue[location])
+                context.http_client.post(location, data=self.queue[location])
                 self.queue[location] = []
-            except Exception, e:
+            except Exception as e:
                 exception_name = e.__class__.__name__
                 context.log.error('failed to push data due to %s' % exception_name)
                 context.log.debug('additional info:', exc_info=True)

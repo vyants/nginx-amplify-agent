@@ -1,3 +1,10 @@
+nginx-amplify-agent (0.26-1) unstable; urgency=low
+
+  * Bug fixes
+  * Automatic restart after installation
+
+ -- Mike Belov <dedm@nginx.com>  Thu, 10 Dec 2015 14:00:00 -0800
+
 nginx-amplify-agent (0.25-1) unstable; urgency=low
 
   * Bug fixes

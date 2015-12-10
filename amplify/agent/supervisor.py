@@ -10,7 +10,6 @@ from amplify.agent.context import context
 from amplify.agent.util import loader
 from amplify.agent.bridge import Bridge
 from amplify.agent.util.threads import spawn
-from amplify.agent.util.http import HTTPClient
 from amplify.agent.containers.abstract import definition_id
 from amplify.agent.errors import AmplifyCriticalException
 
@@ -47,7 +46,6 @@ class Supervisor(Singleton):
         self.pidfile_timeout = 1
 
         # init
-        self.client = HTTPClient()
         self.containers = {}
         self.bridge = None
 
@@ -85,7 +83,7 @@ class Supervisor(Singleton):
             return
 
         # run bridge thread
-        self.bridge = spawn(Bridge(self.client).run)
+        self.bridge = spawn(Bridge().run)
 
         # main cycle
         while self.is_running:
@@ -110,8 +108,9 @@ class Supervisor(Singleton):
         for container in self.containers.itervalues():
             container.stop_objects()
 
-        self.bridge.flush_metrics()
-        self.bridge.flush_events()
+        bridge = Bridge()
+        bridge.flush_metrics()
+        bridge.flush_events()
 
     def talk_with_cloud(self, top_object=None):
         # TODO: receive commands from cloud
@@ -122,7 +121,7 @@ class Supervisor(Singleton):
 
         # talk to cloud
         try:
-            cloud_response = self.client.post('agent/', data=top_object)
+            cloud_response = context.http_client.post('agent/', data=top_object)
         except:
             context.log.error('could not connect to cloud', exc_info=True)
             raise AmplifyCriticalException()
@@ -149,6 +148,7 @@ class Supervisor(Singleton):
         # global config changes
         config_changed = context.app_config.apply(cloud_response['config'])
         if config_changed and self.containers:
+            context.http_client.update_cloud_url()
             context.log.info('config has changed. now running with: %s' % pprint.pformat(context.app_config.config))
             for container in self.containers.itervalues():
                 container.stop_objects()
@@ -162,4 +162,4 @@ class Supervisor(Singleton):
         """
         if self.bridge.ready and self.bridge.exception:
             context.log.debug('bridge exception: %s' % self.bridge.exception)
-            self.bridge = gevent.spawn(Bridge(self.client).run)
+            self.bridge = gevent.spawn(Bridge().run)

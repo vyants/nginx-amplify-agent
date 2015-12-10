@@ -177,6 +177,9 @@ class ParserTestCase(BaseTestCase):
                     if location == '= /some/':
                         assert_that(data, has_item('rewrite_by_lua'))
 
+        # maps
+        assert_that(http['map']['$http_user_agent $device'], has_key('~*Nexus\\ One|Nexus\\ S'))
+
     def test_parse_ssl(self):
         """
         This test case specifically checks to see that none of the excluded directives (SSL focused) are parsed.

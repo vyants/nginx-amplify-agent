@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from amplify.agent.util.http import HTTPClient
+from amplify.agent.context import context
 
 __author__ = "Mike Belov"
 __copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
@@ -26,10 +26,12 @@ class AmazonEC2(object):
 
     @staticmethod
     def read_meta():
-        client = HTTPClient()
         for field in AmazonEC2.FIELDS:
             try:
-                value = client.get('%s/%s' % (AmazonEC2.META_URL, field), timeout=0.1, json=False, log=False)
+                value = context.http_client.get(
+                    '%s/%s' % (AmazonEC2.META_URL, field),
+                    timeout=0.1, json=False, log=False
+                )
                 if value is not None:
                     AmazonEC2.metadata[field] = value
             except Exception:

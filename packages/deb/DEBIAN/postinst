@@ -15,4 +15,19 @@ if [ -z "$2" ]; then
     chown nginx /var/run/amplify-agent
     chown nginx /var/log/amplify-agent
     chown nginx /var/run/amplify-agent /var/log/amplify-agent/agent.log
+else
+    # Check for an older version of the agent running
+    if command -V pgrep > /dev/null 2>&1; then
+        agent_pid=`pgrep amplify-agent`
+    else
+        agent_pid=`ps aux | grep -i '[a]mplify-agent' | awk '{print $2}'`
+    fi
+
+    # stop it
+    if [ -n "$agent_pid" ]; then
+        service amplify-agent stop > /dev/null 2>&1 < /dev/null
+    fi
+
+    # start it
+    service amplify-agent start > /dev/null 2>&1 < /dev/null
 fi

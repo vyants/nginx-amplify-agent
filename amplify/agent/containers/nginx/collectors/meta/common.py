@@ -11,7 +11,7 @@ from amplify.agent.eventd import INFO
 
 __author__ = "Mike Belov"
 __copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
-__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev"]
+__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
 __email__ = "dedm@nginx.com"
@@ -55,7 +55,7 @@ class NginxCommonMetaCollector(AbstractCollector):
         ):
             try:
                 method(meta)
-            except Exception, e:
+            except Exception as e:
                 exception_name = e.__class__.__name__
                 context.log.error('failed to collect meta %s due to %s' % (method.__name__, exception_name))
                 context.log.debug('additional info:', exc_info=True)

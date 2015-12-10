@@ -72,17 +72,18 @@ if __name__ == '__main__':
         if action not in ('start', 'stop', 'configtest'):
             raise IndexError
     except IndexError:
-        print "Invalid action or no action supplied\n"
+        print("Invalid action or no action supplied\n")
         parser.print_help()
         sys.exit(1)
 
     if action == 'configtest':
         rc = test_config(options.config, options.pid)
-        print ""
+        print("")
         sys.exit(rc)
     else:
         try:
-            test_config(options.config, options.pid)  # Check config before trying to start.
+            if options.config:
+                test_config(options.config, options.pid)  # Check config before trying to start.
             from amplify.agent.context import context
             context.setup(
                 app='agent',
@@ -91,7 +92,7 @@ if __name__ == '__main__':
             )
         except:
             import traceback
-            print traceback.format_exc(sys.exc_traceback)
+            print(traceback.format_exc(sys.exc_traceback))
 
         try:
             from amplify.agent.supervisor import Supervisor
@@ -105,4 +106,4 @@ if __name__ == '__main__':
                 supervisor.run()
         except:
             context.default_log.error('uncaught exception during run time', exc_info=True)
-            print traceback.format_exc(sys.exc_traceback)
+            print(traceback.format_exc(sys.exc_traceback))

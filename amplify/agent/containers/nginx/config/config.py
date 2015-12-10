@@ -214,7 +214,7 @@ class NginxConfig(object):
                 for line in nginx_t_err:
                     if 'syntax is' in line and 'syntax is ok' not in line:
                         self.test_errors.append(line)
-            except Exception, e:
+            except Exception as e:
                 exception_name = e.__class__.__name__
                 context.log.error('failed to %s -t -c %s due to %s' % (self.binary, self.filename, exception_name))
                 context.log.debug('additional info:', exc_info=True)

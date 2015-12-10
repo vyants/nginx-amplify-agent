@@ -1,13 +1,19 @@
 # -*- coding: utf-8 -*-
 import logging
 import logging.config
-import thread
 
 from amplify.agent.context import context
 
+try:
+    import thread
+except ImportError:
+    # Renamed in Python 3
+    import _thread as thread
+
+
 __author__ = "Mike Belov"
 __copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
-__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev"]
+__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
 __email__ = "dedm@nginx.com"

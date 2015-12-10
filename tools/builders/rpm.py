@@ -6,7 +6,7 @@ from util import shell_call, get_version_and_build, install_pip, install_pip_dep
 
 __author__ = "Mike Belov"
 __copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
-__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev"]
+__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
 __email__ = "dedm@nginx.com"
@@ -67,5 +67,5 @@ def build():
         shell_call('rm -r dist', important=False)
         shell_call('rm -r *.egg-*', important=False)
     except:
-        print traceback.format_exc()
+        print(traceback.format_exc())
 

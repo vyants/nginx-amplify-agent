@@ -1,4 +1,4 @@
-%{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
+%{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
 
 # distribution specific definitions
 %define use_systemd (0%{?fedora} && 0%{?fedora} >= 18) || (0%{?rhel} && 0%{?rhel} >= 7) || (0%{?suse_version} == 1315)
@@ -99,6 +99,21 @@ if [ $1 -eq 1 ] ; then
     mkdir -p /var/run/amplify-agent
     touch /var/log/amplify-agent/agent.log
     chown nginx /var/run/amplify-agent /var/log/amplify-agent/agent.log
+elif [ $1 -eq 2 ] ; then
+    # Check for an older version of the agent running
+    if command -V pgrep > /dev/null 2>&1; then
+        agent_pid=`pgrep amplify-agent`
+    else
+        agent_pid=`ps aux | grep -i '[a]mplify-agent' | awk '{print $2}'`
+    fi
+
+    # stop it
+    if [ -n "$agent_pid" ]; then
+        service amplify-agent stop > /dev/null 2>&1 < /dev/null
+    fi
+
+    # start it
+    service amplify-agent start > /dev/null 2>&1 < /dev/null
 fi
 
 %preun
@@ -115,6 +130,11 @@ fi
 
 
 %changelog
+* Thu Dec 10 2015 Mike Belov <dedm@nginx.com> 0.26-1
+- 0.26-1
+- Bug fixes
+- Automatic restart after installation
+
 * Wed Dec 3 2015 Mike Belov <dedm@nginx.com> 0.25-1
 - 0.25-1
 - Bug fixes
