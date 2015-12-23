@@ -33,7 +33,7 @@ class Context(Singleton):
     def __init__(self):
         self.pid = os.getpid()
 
-        self.version = '0.26-1'  # Major.Minor-Build
+        self.version = '0.27-1'  # Major.Minor-Build
         self.environment = None
         self.http_client = None
         self.default_log = None

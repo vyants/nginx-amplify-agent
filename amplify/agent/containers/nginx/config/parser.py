@@ -176,7 +176,7 @@ class NginxConfigParser(object):
         map_block | block
     ).ignore(pythonStyleComment)
 
-    INCLUDE_RE = re.compile(r'.*include\s+(?P<include_file>.*);')
+    INCLUDE_RE = re.compile(r'[^#]*include\s+(?P<include_file>.*);')
 
     def __init__(self, filename='/etc/nginx/nginx.conf'):
         global tokens_cache

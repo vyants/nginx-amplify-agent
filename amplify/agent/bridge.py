@@ -2,8 +2,8 @@
 import time
 import gc
 
-from collections import defaultdict
 from threading import current_thread
+from collections import deque
 
 from amplify.agent.util import memusage
 from amplify.agent.context import context
@@ -20,8 +20,11 @@ __email__ = "dedm@nginx.com"
 
 class Bridge(Singleton):
     def __init__(self):
-        self.queue = defaultdict(list)
+        self.payload = {}
         self.first_run = True
+
+        # Instantiate payload with appropriate keys and buckets.
+        self._reset_payload()
 
     def look_around(self):
         """
@@ -43,17 +46,9 @@ class Bridge(Singleton):
                 self.wait()
 
                 context.inc_action_id()
-                self.flush_meta()
-
-                if not self.first_run:
-                    self.flush_metrics()
-                    self.flush_events()
-                    self.flush_configs()
-                else:
-                    self.first_run = False
+                self.flush_all()
 
                 gc.collect()
-
                 m_size_a, m_rss_a = memusage.report()
                 context.log.debug('mem before: (%s %s), after (%s, %s)' % (m_size_b, m_rss_b, m_size_a, m_rss_a))
                 if m_rss_a >= m_rss_b:
@@ -64,19 +59,61 @@ class Bridge(Singleton):
             context.default_log.error('failed', exc_info=True)
             raise
 
+    def flush_all(self):
+        containers = {
+            'meta': self.flush_meta,
+            'metrics': self.flush_metrics,
+            'events': self.flush_events,
+            'configs': self.flush_configs
+        }
+
+        # Flush data and add to appropriate payload bucket.
+        if self.first_run:
+            # If this is the first run, flush meta only to ensure object creation.
+            self.payload['meta'].append(self.flush_meta())
+            self.first_run = False
+        else:
+            for container_type in self.payload.keys():
+                flush_data = containers[container_type].__call__()
+                if flush_data:
+                    self.payload[container_type].append(flush_data)
+        context.log.debug(
+            'modified payload; current payload stats: '
+            'meta - %s, metrics - %s, events - %s, configs - %s' % (
+                len(self.payload['meta']),
+                len(self.payload['metrics']),
+                len(self.payload['events']),
+                len(self.payload['configs'])
+            )
+        )
+
+        # Send payload to backend.
+        try:
+            self._pre_process_payload()  # Convert deques to lists for encoding
+            context.http_client.post('update/', data=self.payload)
+            context.default_log.debug(self.payload)
+            self._reset_payload()  # Clear payload after successful send
+        except Exception as e:
+            exception_name = e.__class__.__name__
+            context.log.error('failed to push data due to %s' % exception_name)
+            context.log.debug('additional info:', exc_info=True)
+            self._post_process_payload()  # Convert lists to deques since send failed
+
+        context.log.debug('finished flush_all; new payload: %s' % self.payload)
+
     def flush_meta(self):
-        self._flush(container=context.metad, location='meta/')
+        return self._flush(container=context.metad)
 
     def flush_metrics(self):
-        self._flush(container=context.statsd, location='metrics/')
+        return self._flush(container=context.statsd)
 
     def flush_events(self):
-        self._flush(container=context.eventd, location='events/')
+        return self._flush(container=context.eventd)
 
     def flush_configs(self):
-        self._flush(container=context.configd, location='nginx/config/')
+        return self._flush(container=context.configd)
 
-    def _flush(self, container=None, location=None):
+    def _flush(self, container=None):
         # get structure
         objects_structure = self.look_around()
 
@@ -102,15 +139,33 @@ class Bridge(Singleton):
                     root['children'].append(child_data)
 
         if child_data_found or not root_only_for_structure:
-            self.queue[location].append(root)
-            context.default_log.debug(root)
-            try:
-                context.http_client.post(location, data=self.queue[location])
-                self.queue[location] = []
-            except Exception as e:
-                exception_name = e.__class__.__name__
-                context.log.error('failed to push data due to %s' % exception_name)
-                context.log.debug('additional info:', exc_info=True)
+            return root
+
+    def _reset_payload(self):
+        """
+        After payload has been succesfully sent, clear the queues (reset them to empty deques).
+        """
+        self.payload = {
+            'meta': deque(maxlen=360),
+            'metrics': deque(maxlen=360),
+            'events': deque(maxlen=360),
+            'configs': deque(maxlen=360)
+        }
+
+    def _pre_process_payload(self):
+        """
+        ujson.encode does not handle deque objects well.  So before attempting a send, convert all the deques to lists.
+        """
+        for key in self.payload.keys():
+            self.payload[key] = list(self.payload[key])
+
+    def _post_process_payload(self):
+        """
+        If a payload is NOT reset (cannot be sent), then we should reconvert the lists to deques with maxlen to enforce
+        memory management.
+        """
+        for key in self.payload.keys():
+            self.payload[key] = deque(self.payload[key], maxlen=360)
 
     @staticmethod
     def wait():

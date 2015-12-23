@@ -43,6 +43,10 @@ class SystemObject(AbstractObject):
                 message='agent started, version: %s, pid %s' % (context.version, context.pid),
                 ctime=context.start_time-1  # Make sure that the start event is the first event reported.
             )
+
+            # Log agent started event.
+            context.log.info('agent started, version: %s, pid %s' % (context.version, context.pid))
+
         super(SystemObject, self).start()
 
     def stop(self, *args, **kwargs):
@@ -51,4 +55,8 @@ class SystemObject(AbstractObject):
             level=INFO,
             message='agent stopped, version: %s, pid %s' % (context.version, context.pid)
         )
+
+        # Log agent stopped event.
+        context.log.info('agent stopped, version: %s, pid %s' % (context.version, context.pid))
+
         super(SystemObject, self).stop(*args, **kwargs)

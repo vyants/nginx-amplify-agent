@@ -147,12 +147,13 @@ class Supervisor(Singleton):
 
         # global config changes
         config_changed = context.app_config.apply(cloud_response['config'])
-        if config_changed and self.containers:
+        if config_changed:
             context.http_client.update_cloud_url()
-            context.log.info('config has changed. now running with: %s' % pprint.pformat(context.app_config.config))
-            for container in self.containers.itervalues():
-                container.stop_objects()
-            self.init_containers()
+            if self.containers:
+                context.log.info('config has changed. now running with: %s' % pprint.pformat(context.app_config.config))
+                for container in self.containers.itervalues():
+                    container.stop_objects()
+                self.init_containers()
 
         self.last_cloud_talk_time = int(time.time())
 

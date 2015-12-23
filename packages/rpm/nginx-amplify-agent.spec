@@ -112,6 +112,10 @@ elif [ $1 -eq 2 ] ; then
         service amplify-agent stop > /dev/null 2>&1 < /dev/null
     fi
 
+    # Change API URL from 1.0 to 1.1
+    sh -c "sed -i.old 's/api_url.*$/api_url = https:\/\/receiver.amplify.nginx.com:443\/1.1/' \
+        /etc/amplify-agent/agent.conf"
+
     # start it
     service amplify-agent start > /dev/null 2>&1 < /dev/null
 fi
@@ -130,10 +134,9 @@ fi
 
 
 %changelog
-* Thu Dec 10 2015 Mike Belov <dedm@nginx.com> 0.26-1
-- 0.26-1
+* Thu Dec 17 2015 Mike Belov <dedm@nginx.com> 0.27-1
+- 0.27-1
 - Bug fixes
-- Automatic restart after installation
 
 * Wed Dec 3 2015 Mike Belov <dedm@nginx.com> 0.25-1
 - 0.25-1

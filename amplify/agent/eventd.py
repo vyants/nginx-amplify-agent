@@ -49,6 +49,7 @@ class Event(object):
             'counter': self.counter
         }
 
+
 class EventdClient(CommonDataClient):
 
     def __init__(self, *args, **kwargs):
