@@ -64,6 +64,7 @@ class WithConfigTestCase(BaseTestCase):
         imp.reload(test.config.app)
         context.app_config = test.config.app.TestingConfig()
 
+
 class NginxCollectorTestCase(BaseTestCase):
     """
     Special class for collector tests
@@ -116,4 +117,11 @@ class RealNginxTestCase(BaseTestCase):
         subp.call('service nginx restart')
 
 
+def nginx_plus_installed():
+    out, err = subp.call('/usr/sbin/nginx -V')
+    first_line = err[0]
+    return True if 'nginx-plus' in first_line else False
+
+nginx_plus_test = pytest.mark.skipif(not nginx_plus_installed(), reason='This is a test for nginx+')
 future_test = pytest.mark.skipif(1 > 0, reason='This test will be written in future')
+

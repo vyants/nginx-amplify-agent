@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 import os
 
-from builders import deb, rpm
+from builders import deb, rpm, amazon
+from builders.util import shell_call
 
 __author__ = "Mike Belov"
 __copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
@@ -17,4 +18,9 @@ if __name__ == '__main__':
     elif os.path.isfile('/etc/redhat-release'):
         rpm.build()
     else:
-        print("sorry, it will be done later\n")
+        os_release = shell_call('cat /etc/os-release', important=False)
+
+        if 'amazon linux ami' in os_release.lower():
+            amazon.build()
+        else:
+            print("sorry, it will be done later\n")

@@ -1,5 +1,4 @@
 #!/bin/bash
-# nginx-nr-agent init script
 #
 # chkconfig: - 50 50
 # description: NGINX Amplify Agent
@@ -28,6 +27,38 @@ prog="nginx-amplify-agent"
 binary=/usr/bin/nginx-amplify-agent.py
 pidfile=/var/run/amplify-agent/amplify-agent.pid
 conffile=/etc/amplify-agent/agent.conf
+user=nginx
+
+if [ -f "$conffile" ]; then
+    config_amplify_user=`grep -v '#' ${conffile} | \
+                         grep -A 5 -i '\[.*nginx.*\]' | \
+                         grep -i 'user.*=' | \
+                         awk -F= '{print $2}' | \
+                         sed 's/ //g' | \
+                         head -1`
+    nginxconf=`grep -A 5 -i '\[.*nginx.*\]' ${conffile} | \
+               grep -i 'configfile.*=' | \
+               awk -F= '{print $2}' | \
+               sed 's/ //g' | \
+               head -1`
+fi
+
+if [ -z "$nginxconf" ]; then
+    nginxconf=/etc/nginx/nginx.conf
+fi
+
+if [ -f "$nginxconf" ]; then
+    config_nginx_user=`grep -v '#' ${nginxconf} | \
+                       sed -n -e 's/.*\(user[[:space:]][[:space:]]*[^;]*\);.*/\1/p' | \
+                       awk '{ print $2 }'`
+fi
+
+if [ -n "$config_amplify_user" ]; then
+    user=$config_amplify_user
+else
+    test -n "$config_nginx_user" && \
+    user=$config_nginx_user
+fi
 
 start() {
         [ -x $binary ] || exit 5
@@ -36,8 +67,10 @@ start() {
                 RETVAL=1
                 failure
         else
-                mkdir -p /var/run/amplify-agent && chown nginx /var/run/amplify-agent
-                daemon --user=nginx $binary start --config=$conffile --pid=$pidfile
+                mkdir -p /var/run/amplify-agent && chown $user /var/run/amplify-agent
+                chown -f $user /etc/amplify-agent/agent.conf
+                chown -f $user /var/log/amplify-agent/agent.log
+                daemon --user=$user $binary start --config=$conffile --pid=$pidfile
         fi;
         echo 
         return $RETVAL
@@ -59,13 +92,14 @@ restart(){
 	stop
 	start
 }
+
 configtest(){
         [ -x $binary ] || exit 5
         if [ $UID -ne 0 ]; then
                 RETVAL=1
                 failure
         else
-                $binary configtest  --config=$conffile --pid=$pidfile
+                $binary configtest --config=$conffile --pid=$pidfile
                 RETVAL=$?
         fi;
         return $RETVAL

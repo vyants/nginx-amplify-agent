@@ -3,6 +3,10 @@ api_key =
 hostname =
 uuid =
 
+[nginx]
+user =
+configfile = /etc/nginx/nginx.conf
+
 [proxies]
 https =
 

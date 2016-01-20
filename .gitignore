@@ -15,9 +15,11 @@ env/*
 htmlcov/*
 htmlcov
 build/*
+nginx-repo.crt
+nginx-repo.key
 .coverage
 naas_agent.yaml
 .cache/*
 .cache
 *~
-
+.DS_Store

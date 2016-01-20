@@ -41,10 +41,15 @@ get_os_name () {
 		tr '[:upper:]' '[:lower:]'`
 
 	    if [ -z "$os" ]; then
-		if grep -i "centos" /etc/*-release; then
+		if grep -i "centos" /etc/*-release > /dev/null 2>&1; then
 		    os="centos"
 		else
-		    os="linux"
+		    if grep -i "oracle linux" /etc/*-release > /dev/null 2>&1; then
+			os="centos"
+			centos_flavor="red hat linux (oracle)"
+		    else
+			os="linux"
+		    fi
 		fi
 	    fi
 	fi
@@ -82,22 +87,16 @@ get_os_name () {
 		fi
 		
 		os="centos"
-		centos_flavor="red hat"
+		centos_flavor="red hat linux"
 		;;
 	    amzn)
 		codename="amazon-linux-ami"
 		release_amzn=`cat /etc/*-release | grep -i 'amazon.*[0-9]' | \
 			 sed 's/^[^0-9]*\([0-9][0-9]*\.[0-9][0-9]*\).*$/\1/' | \
 			 head -1`
-			 
-		if [ "$python_27" = "yes" ]; then
-		    release="7"
-		else
-		    release="6"
-		fi
+		release="latest"
 
-		# Amazon Linux is basically a flavor of CentOS
-		os="centos"
+		os="amzn"
 		centos_flavor="amazon linux"
 		;;		
 	    *)
@@ -330,7 +329,7 @@ case "$os" in
 
 	install_deb_rpm
 	;;
-    centos)
+    centos|amzn)
 	printf "\033[32m ${centos_flavor} detected.\033[0m\n"
 
 	step=`expr $step + 1`
@@ -407,8 +406,11 @@ printf "\033[33m     # ${sudo_cmd}service amplify-agent stop\033[0m\n\n"
 printf "\033[32m Agent logs can be found in:\033[0m\n"
 printf "\033[33m     /var/log/amplify-agent/agent.log\033[0m\n\n"
 
+printf "\033[32m Please find the documentation here:\033[0m\n"
+printf "\033[33m     https://github.com/nginxinc/nginx-amplify-doc\033[0m\n\n"
+
 printf "\033[32m After the agent is launched, it might take up to 1 minute\033[0m\n"
-printf "\033[32m for this system to appear in the Amplify UI.\033[0m\n\n"
+printf "\033[32m for this system to appear in the Amplify user interface.\033[0m\n\n"
 
 # Check for an older version of the agent running
 if command -V pgrep > /dev/null 2>&1; then

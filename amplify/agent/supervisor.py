@@ -149,12 +149,14 @@ class Supervisor(Singleton):
         config_changed = context.app_config.apply(cloud_response['config'])
         if config_changed:
             context.http_client.update_cloud_url()
+            context.cloud_restart = True
             if self.containers:
                 context.log.info('config has changed. now running with: %s' % pprint.pformat(context.app_config.config))
                 for container in self.containers.itervalues():
                     container.stop_objects()
                 self.init_containers()
 
+        context.cloud_restart = False
         self.last_cloud_talk_time = int(time.time())
 
     def check_bridge(self):

@@ -6,7 +6,7 @@ sys.path.insert(0, '%s/amplify' % os.getcwd())
 
 from setuptools import setup, find_packages
 
-from amplify.agent.util.host import is_deb, is_rpm
+from amplify.agent.util.host import is_deb, is_rpm, is_amazon
 
 __author__ = "Mike Belov"
 __copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
@@ -23,7 +23,7 @@ data_files = [
     ('/etc/logrotate.d/', ['etc/logrotate.d/amplify-agent'])
 ]
 
-if is_rpm():
+if is_rpm() or is_amazon():
     data_files.append(
         ('/etc/init.d/', ['etc/chkconfig/amplify-agent'])
     )
@@ -34,7 +34,7 @@ elif is_deb():
 
 setup(
     name="nginx-amplify-agent",
-    version="0.27",
+    version="0.28",
     author="Mike Belov",
     author_email="dedm@nginx.com",
     description="NGINX Amplify Agent",

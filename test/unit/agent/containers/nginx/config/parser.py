@@ -24,6 +24,7 @@ map_lua_perl = os.getcwd() + '/test/fixtures/nginx/map_lua_perl/nginx.conf'
 ssl_config = os.getcwd() + '/test/fixtures/nginx/ssl/nginx.conf'
 bad_log_directives_config = os.getcwd() + '/test/fixtures/nginx/broken/bad_logs.conf'
 includes_config = os.getcwd() + '/test/fixtures/nginx/includes/nginx.conf'
+windows_config = os.getcwd() +'/test/fixtures/nginx/windows/nginx.conf'
 
 
 class ParserTestCase(BaseTestCase):
@@ -227,3 +228,24 @@ class ParserTestCase(BaseTestCase):
             '/amplify/test/fixtures/nginx/includes/conf.d/include.conf',
             '/amplify/test/fixtures/nginx/includes/nginx.conf'
         ]))
+
+    def test_parse_windows(self):
+        """
+        Test that windows style line endings are replaces with Unix style ones for parser.
+        """
+        cfg = NginxConfigParser(windows_config)
+
+        cfg.parse()
+        tree = cfg.simplify()
+
+        assert_that(
+            tree['http']['gzip_types'], equal_to(
+                'application/atom+xml\n    application/javascript\n    application/json\n    application/ld+json\n' \
+                '    application/manifest+json\n    application/rss+xml\n    application/vnd.geo+json\n    ' \
+                'application/vnd.ms-fontobject\n    application/x-font-ttf\n    application/x-web-app-manifest+json\n'\
+                '    application/xhtml+xml\n    application/xml\n    font/opentype\n    image/bmp\n    ' \
+                'image/svg+xml\n    image/x-icon\n    text/cache-manifest\n    text/css\n    text/plain\n    ' \
+                'text/vcard\n    text/vnd.rim.location.xloc\n    text/vtt\n    text/x-component\n   ' \
+                ' text/x-cross-domain-policy'
+            )
+        )

@@ -290,6 +290,9 @@ class NginxConfigParser(object):
                 context.log.debug('additional info:', exc_info=True)
                 continue
 
+            # Replace windows line endings with unix ones.
+            source = source.replace('\r\n', '\n')
+
             # check that file contains some information (not commented)
             all_lines_commented = True
             for line in source.split('\n'):
@@ -406,8 +409,11 @@ class NginxConfigParser(object):
                         self.__logic_parse(included_files, result=result)
                     elif key in ('access_log', 'error_log'):
                         # Handle access_log and error_log edge cases
-                        if value == '' or '$' in value:
-                            continue  # Skip log directives that are empty or use nginx variables.
+                        if value == '':
+                            continue  # skip log directives that are empty
+
+                        if '$' in value and ' if=$' not in value:
+                            continue  # skip directives that are use nginx variables and it's not if
 
                         # Otherwise handle normally (see ending else below).
                         indexed_value = self.__idx_save(value, file_index, row.line_number)

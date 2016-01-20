@@ -33,7 +33,7 @@ class Context(Singleton):
     def __init__(self):
         self.pid = os.getpid()
 
-        self.version = '0.27-1'  # Major.Minor-Build
+        self.version = '0.28-1'  # Major.Minor-Build
         self.environment = None
         self.http_client = None
         self.default_log = None
@@ -46,6 +46,7 @@ class Context(Singleton):
         self.top_object = None
         self.ids = {}
         self.action_ids = {}
+        self.cloud_restart = False  # NAAS-854: Handle improper duplicate logging of start/stop events.
 
         self.start_time = int(time.time())
 

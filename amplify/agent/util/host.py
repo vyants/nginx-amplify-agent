@@ -134,6 +134,14 @@ def is_rpm():
     return os.path.isfile('/etc/redhat-release')
 
 
+def is_amazon():
+    os_release, _ = subp.call('cat /etc/os-release', check=False)
+    for line in os_release:
+        if 'amazon linux ami' in line.lower():
+            return True
+    return False
+
+
 def uuid():
     config_uuid = context.app_config['credentials']['uuid']
     result = python_uuid.uuid5(python_uuid.NAMESPACE_DNS, platform.node() + str(python_uuid.getnode())).hex

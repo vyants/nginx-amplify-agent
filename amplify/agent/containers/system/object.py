@@ -36,7 +36,7 @@ class SystemObject(AbstractObject):
         ]
 
     def start(self):
-        if not self.running:
+        if not self.running and not context.cloud_restart:
             # Fire agent started event.
             self.eventd.event(
                 level=INFO,
@@ -50,13 +50,14 @@ class SystemObject(AbstractObject):
         super(SystemObject, self).start()
 
     def stop(self, *args, **kwargs):
-        # Fire agent stopped event.
-        self.eventd.event(
-            level=INFO,
-            message='agent stopped, version: %s, pid %s' % (context.version, context.pid)
-        )
+        if not context.cloud_restart:
+            # Fire agent stopped event.
+            self.eventd.event(
+                level=INFO,
+                message='agent stopped, version: %s, pid %s' % (context.version, context.pid)
+            )
 
-        # Log agent stopped event.
-        context.log.info('agent stopped, version: %s, pid %s' % (context.version, context.pid))
+            # Log agent stopped event.
+            context.log.info('agent stopped, version: %s, pid %s' % (context.version, context.pid))
 
         super(SystemObject, self).stop(*args, **kwargs)

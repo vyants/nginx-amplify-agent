@@ -3,6 +3,9 @@ api_key =
 hostname =
 uuid =
 
+[nginx]
+user =
+
 [proxies]
 https =
 

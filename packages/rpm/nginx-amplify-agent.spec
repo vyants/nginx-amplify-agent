@@ -12,10 +12,10 @@ Name: nginx-amplify-agent
 Version: %{amplify_version}
 Release: %{amplify_release}%{?dist}
 Vendor: Nginx Software, Inc.
-URL: https://amplify.nginx.com/
 Packager: Nginx Software, Inc. <https://www.nginx.com>
-License: 2-clause BSD-like license
 Group: System Environment/Daemons
+URL: https://github.com/nginxinc
+License: 2-clause BSD-like license
 
 
 Source0:   nginx-amplify-agent-%{version}.tar.gz
@@ -34,9 +34,12 @@ Requires(post): chkconfig
 
 
 %description
-This package contains code used for collecting
-and reporting a number of metrics, configs, logs and events
-from NGINX and/or NGINX Plus instances to NGINX Amplify
+The NGINX Amplify Agent is a small, Python application that
+provides system and NGINX metric collection. It is part of
+NGINX Amplify - the monitoring and configuration assistance
+service for NGINX.
+This package installs and runs NGINX Amplify Agent daemon.
+See http://nginx.com/amplify for more information
 
 
 
@@ -134,6 +137,12 @@ fi
 
 
 %changelog
+* Tue Jan 19 2016 Mike Belov <dedm@nginx.com> 0.28-1
+- 0.28-1
+- Bug fixes
+- Amazon Linux support
+- Initial NGINX+ extended status support
+
 * Thu Dec 17 2015 Mike Belov <dedm@nginx.com> 0.27-1
 - 0.27-1
 - Bug fixes

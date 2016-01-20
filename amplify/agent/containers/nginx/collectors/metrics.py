@@ -43,7 +43,7 @@ class NginxMetricsCollector(AbstractCollector):
             self.workers_rlimit_nofile,
             self.workers_io,
             self.workers_cpu,
-            self.stub_status
+            self.status
         ):
             try:
                 method()
@@ -187,6 +187,19 @@ class NginxMetricsCollector(AbstractCollector):
         self.statsd.gauge('workers.cpu.user', worker_user)
         self.statsd.gauge('workers.cpu.system', worker_sys)
 
+    def status(self):
+        """
+        check if found extended status, collect "global" metrics from it
+        don't look for stub_status
+        if there's no extended status easily accessible, proceed with stub_status
+        """
+        if self.object.plus_status_enabled:
+            self.plus_status()
+        elif self.object.stub_status_enabled:
+            self.stub_status()
+        else:
+            return
+
     def stub_status(self):
         """
         stub status metrics
@@ -194,24 +207,17 @@ class NginxMetricsCollector(AbstractCollector):
         nginx.http.conn.current = ss.active
         nginx.http.conn.active = ss.active - ss.waiting
         nginx.http.conn.idle = ss.waiting
+        nginx.http.request.count = ss.requests ## counter
         nginx.http.request.reading = ss.reading
         nginx.http.request.writing = ss.writing
-        nginx.http.conn.dropped = ss.accepts - ss.handled
-        nginx.http.conn.dropped_s = (current nginx.conn.dropped - previous nginx.conn.dropped) /
-                                    (current measurement timestamp - previous timestamp)
-        nginx.http.conn.accepted = ss.accepts
-        nginx.http.conn.accepted_s = (current nginx.conn.accepted - previous nginx.conn.accepted) /
-                                    (current measurement timestamp - previous timestamp)
+        nginx.http.conn.dropped = ss.accepts - ss.handled ## counter
+        nginx.http.conn.accepted = ss.accepts ## counter
         """
-        if not self.object.stub_status_enabled:
-            return
-
         stub_body = ''
         stub = {}
         stub_time = int(time.time())
 
         # get stub status body
-
         try:
             stub_body = context.http_client.get(self.object.stub_status_url, timeout=1, json=False)
         except:
@@ -248,6 +254,53 @@ class NginxMetricsCollector(AbstractCollector):
         }
         for metric_name, stub_name in counted_vars.iteritems():
             value, stamp = stub[stub_name], stub_time
+            prev_stamp, prev_value = self.previous_values.get(metric_name, [None, None])
+
+            if prev_stamp:
+                value_delta = value - prev_value
+                self.statsd.incr(metric_name, value_delta)
+
+            self.previous_values[metric_name] = [stamp, value]
+
+    def plus_status(self):
+        """
+        plus status metrics
+
+        nginx.http.conn.accepted = connections.accepted  ## counter
+        nginx.http.conn.dropped = connections.dropped  ## counter
+        nginx.http.conn.active = connections.active
+        nginx.http.conn.current = connections.active + connections.idle
+        nginx.http.conn.idle = connections.idle
+        nginx.http.request.count = requests.total  ## counter
+        nginx.http.request.current = requests.current
+        """
+        status = {}
+        stamp = int(time.time())
+
+        # get plus status body
+        try:
+            status = context.http_client.get(self.object.plus_status_url, timeout=1)
+        except:
+            context.log.error('failed to check plus_status url %s' % self.object.plus_status_url)
+            context.log.debug('additional info', exc_info=True)
+
+        connections = status.get('connections', {})
+        requests = status.get('requests', {})
+
+        # gauges
+
+        self.statsd.gauge('http.conn.active', connections.get('active'))
+        self.statsd.gauge('http.conn.idle', connections.get('idle'))
+        self.statsd.gauge('http.conn.current', connections.get('active') + connections.get('idle'))
+        self.statsd.gauge('http.request.current', requests.get('current'))
+
+        # counters
+        counted_vars = {
+            'http.request.count': requests.get('total'),
+            'http.conn.accepted': connections.get('accepted'),
+            'http.conn.dropped': connections.get('dropped'),
+        }
+        for metric_name, value in counted_vars.iteritems():
             prev_stamp, prev_value = self.previous_values.get(metric_name, [None, None])
 
             if prev_stamp:

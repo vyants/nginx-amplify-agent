@@ -65,9 +65,9 @@ def change_first_line(filename, first_line):
         f.writelines(lines)
 
 
-def install_pip():
+def install_pip(python='python'):
     shell_call('wget --no-check-certificate https://bootstrap.pypa.io/get-pip.py')
-    shell_call('python get-pip.py --user')
+    shell_call('%s get-pip.py --user' % python)
 
     # next lines are for "error: invalid command 'bdist_wheel'" on centos6
     shell_call('~/.local/bin/pip install setuptools --user')

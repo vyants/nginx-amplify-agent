@@ -1,9 +1,17 @@
 Package: nginx-amplify-agent
-Description: Nginx Amplify Agent
+Description: NGINX Amplify Agent
+  The NGINX Amplify Agent is a small, Python application that provides
+  system and NGINX metric collection. It is part of NGINX Amplify -
+  the monitoring and configuration assistance service for NGINX.
+  .
+  This package installs and runs NGINX Amplify Agent daemon.
+  .
+  See http://nginx.com/amplify for more information
+License: 2-clause BSD-like license
+Homepage: https://github.com/nginxinc
 Maintainer: Mike Belov <dedm@nginx.com>
 Section: python
 Priority: optional
 Version: 0.0-0
-Homepage: https://www.nginx.com/
 Architecture: any
 Depends: python (>=2.6), lsb-release

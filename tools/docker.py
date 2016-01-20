@@ -16,7 +16,7 @@ def rm_and_build(folder, name):
     shell_call('docker rm %s' % name, terminal=True)
     shell_call('docker build -t %s docker/%s' % (name, folder), terminal=True)
 
-supported_os = ['ubuntu1404', 'ubuntu1004', 'debian8', 'centos6', 'centos7']
+supported_os = ['ubuntu1404', 'ubuntu1404-plus', 'ubuntu1004', 'debian8', 'centos6', 'centos7']
 
 usage = "usage: %prog -h"
 

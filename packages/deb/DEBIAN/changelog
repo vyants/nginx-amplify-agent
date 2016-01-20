@@ -1,3 +1,11 @@
+nginx-amplify-agent (0.28-1) unstable; urgency=low
+
+  * Bug fixes
+  * Amazon Linux support
+  * Initial NGINX+ extended status support
+
+ -- Mike Belov <dedm@nginx.com>  Tue, 19 Jan 2016 14:00:00 -0800
+
 nginx-amplify-agent (0.27-1) unstable; urgency=low
 
   * Bug fixes
