@@ -137,6 +137,10 @@ fi
 
 
 %changelog
+* Tue Jan 19 2016 Mike Belov <dedm@nginx.com> 0.28-2
+- 0.28-2
+- Bug fixes
+
 * Tue Jan 19 2016 Mike Belov <dedm@nginx.com> 0.28-1
 - 0.28-1
 - Bug fixes

@@ -38,7 +38,7 @@ fi
 if [ -f "$NGINXCONF" ]; then
     CONFIG_NGINX_USER=`grep -v '#' ${NGINXCONF} | \
                        sed -n -e 's/.*\(user[[:space:]][[:space:]]*[^;]*\);.*/\1/p' | \
-                       awk '{ print $2 }'`
+                       awk '{ print $2 }' | head -1`
 fi
 
 if [ -n "$CONFIG_AMPLIFY_USER" ]; then

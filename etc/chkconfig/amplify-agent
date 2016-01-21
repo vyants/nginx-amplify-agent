@@ -50,7 +50,7 @@ fi
 if [ -f "$nginxconf" ]; then
     config_nginx_user=`grep -v '#' ${nginxconf} | \
                        sed -n -e 's/.*\(user[[:space:]][[:space:]]*[^;]*\);.*/\1/p' | \
-                       awk '{ print $2 }'`
+                       awk '{ print $2 }' | head -1`
 fi
 
 if [ -n "$config_amplify_user" ]; then
