@@ -41,12 +41,12 @@ get_os_name () {
 		tr '[:upper:]' '[:lower:]'`
 
 	    if [ -z "$os" ]; then
-		if grep -i "centos" /etc/*-release > /dev/null 2>&1; then
-		    os="centos"
+		if grep -i "oracle linux" /etc/*-release > /dev/null 2>&1 || \
+		   grep -i "red hat" /etc/*-release > /dev/null 2>&1; then
+		    os="rhel"
 		else
-		    if grep -i "oracle linux" /etc/*-release > /dev/null 2>&1; then
+		    if grep -i "centos" /etc/*-release > /dev/null 2>&1; then
 			os="centos"
-			centos_flavor="red hat linux (oracle)"
 		    else
 			os="linux"
 		    fi
