@@ -26,9 +26,9 @@ get_os_name () {
 	codename=`lsb_release -cs | tr '[:upper:]' '[:lower:]'`
 	release=`lsb_release -rs | sed 's/\..*$//'`
 
-	if [ "$os" = "redhatenterpriseserver" ]; then
+	if [ "$os" = "redhatenterpriseserver" -o "$os" = "oracleserver" ]; then
 	    os="centos"
-	    centos_flavor="red hat"
+	    centos_flavor="red hat linux"
 	fi
     # Otherwise it's getting a little bit more tricky
     else
