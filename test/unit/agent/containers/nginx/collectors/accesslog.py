@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from hamcrest import *
+from collections import defaultdict
 
 from test.base import NginxCollectorTestCase
 from amplify.agent.containers.nginx.log.access import NginxAccessLogParser
@@ -77,6 +78,205 @@ class LogsPerMethodTestCase(NginxCollectorTestCase):
         assert_that(histogram, has_item('nginx.upstream.response.time'))
         assert_that(histogram['nginx.upstream.response.time'], equal_to([2.001 + 0.345]))
 
+    def test_empty_upstreams(self):
+        log_format = '$remote_addr - $remote_user [$time_local] ' + \
+                     '"$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" ' + \
+                     'rt=$request_time ut="$upstream_response_time" cs=$upstream_cache_status'
+
+        line = \
+            '1.2.3.4 - - [22/Jan/2010:19:34:21 +0300] "GET /foo/ HTTP/1.1" 200 11078 ' + \
+            '"http://www.rambler.ru/" "Mozilla/5.0 (Windows; U; Windows NT 5.1" rt=0.010 ut="-" cs=-'
+
+        # run single method
+        collector = NginxAccessLogsCollector(object=self.fake_object, tail=[])
+        collector.upstreams(NginxAccessLogParser(log_format).parse(line))
+
+        # check
+        metrics = self.fake_object.statsd.current
+        assert_that(metrics, equal_to(defaultdict()))
+
+        # counters
+        counters = metrics['counter']
+        assert_that(counters, equal_to({}))
+
+        # histogram
+        histogram = metrics['timer']
+        assert_that(histogram, equal_to({}))
+
+    def test_part_empty_upstreams(self):
+        log_format = '$remote_addr - $remote_user [$time_local] ' + \
+                     '"$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" ' + \
+                     'rt=$request_time ut="$upstream_response_time" cs=$upstream_cache_status'
+
+        line = \
+            '1.2.3.4 - - [22/Jan/2010:19:34:21 +0300] "GET /foo/ HTTP/1.1" 200 11078 ' + \
+            '"http://www.rambler.ru/" "Mozilla/5.0 (Windows; U; Windows NT 5.1" rt=0.010 ut="-" cs=MISS'
+
+        # run single method
+        collector = NginxAccessLogsCollector(object=self.fake_object, tail=[])
+        collector.upstreams(NginxAccessLogParser(log_format).parse(line))
+
+        # check
+        metrics = self.fake_object.statsd.current
+        assert_that(metrics, has_item('counter'))
+
+        # counters
+        counters = metrics['counter']
+        assert_that(counters, has_item('nginx.upstream.request.count'))
+        assert_that(counters, has_item('nginx.upstream.next.count'))
+        assert_that(counters, has_item('nginx.cache.miss'))
+        assert_that(counters['nginx.upstream.request.count'][0][1], equal_to(1))
+        assert_that(counters['nginx.upstream.next.count'][0][1], equal_to(0))
+        assert_that(counters['nginx.cache.miss'][0][1], equal_to(1))
+
+        # histogram
+        histogram = metrics['timer']
+        assert_that(histogram, equal_to({}))
+
+    def test_part_empty_upstreams2(self):
+        log_format = '$remote_addr - $remote_user [$time_local] ' + \
+                     '"$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" ' + \
+                     'rt=$request_time ut="$upstream_response_time" cs=$upstream_cache_status'
+
+        line = \
+            '1.2.3.4 - - [22/Jan/2010:19:34:21 +0300] "GET /foo/ HTTP/1.1" 200 11078 ' + \
+            '"http://www.rambler.ru/" "Mozilla/5.0 (Windows; U; Windows NT 5.1" rt=0.010 ut="2.001, 0.345" cs=-'
+
+        # run single method
+        collector = NginxAccessLogsCollector(object=self.fake_object, tail=[])
+        collector.upstreams(NginxAccessLogParser(log_format).parse(line))
+
+        # check
+        metrics = self.fake_object.statsd.current
+        assert_that(metrics, has_item('counter'))
+        assert_that(metrics, has_item('timer'))
+
+        # counters
+        counters = metrics['counter']
+        assert_that(counters, has_item('nginx.upstream.request.count'))
+        assert_that(counters, has_item('nginx.upstream.next.count'))
+        assert_that(counters, not has_item('nginx.cache.miss'))
+        assert_that(counters['nginx.upstream.request.count'][0][1], equal_to(1))
+        assert_that(counters['nginx.upstream.next.count'][0][1], equal_to(1))
+
+        # histogram
+        histogram = metrics['timer']
+        assert_that(histogram, has_item('nginx.upstream.response.time'))
+        assert_that(histogram['nginx.upstream.response.time'], equal_to([2.001 + 0.345]))
+
+    def test_upstream_status_and_length(self):
+        log_format = '$remote_addr - $remote_user [$time_local] ' + \
+                     '"$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" ' + \
+                     'rt=$request_time ut="$upstream_response_time" cs=$upstream_cache_status ' + \
+                     'us=$upstream_status $upstream_response_length'
+
+        line = \
+            '1.2.3.4 - - [22/Jan/2010:19:34:21 +0300] "GET /foo/ HTTP/1.1" 200 11078 ' + \
+            '"http://www.rambler.ru/" "Mozilla/5.0 (Windows; U; Windows NT 5.1" rt=0.010 ut="2.001, 0.345" cs=MISS ' + \
+            'us=200 20'
+
+        # run single method
+        collector = NginxAccessLogsCollector(object=self.fake_object, tail=[])
+        collector.upstreams(NginxAccessLogParser(log_format).parse(line))
+
+        # check
+        metrics = self.fake_object.statsd.current
+        assert_that(metrics, has_item('counter'))
+        assert_that(metrics, has_item('timer'))
+
+        # counters
+        counters = metrics['counter']
+        assert_that(counters, has_item('nginx.upstream.request.count'))
+        assert_that(counters, has_item('nginx.upstream.next.count'))
+        assert_that(counters, has_item('nginx.cache.miss'))
+        assert_that(counters, has_item('nginx.upstream.http.status.2xx'))
+        assert_that(counters, has_item('nginx.upstream.http.response.length'))
+        assert_that(counters['nginx.upstream.request.count'][0][1], equal_to(1))
+        assert_that(counters['nginx.upstream.next.count'][0][1], equal_to(1))
+        assert_that(counters['nginx.upstream.http.status.2xx'][0][1], equal_to(1))
+        assert_that(counters['nginx.upstream.http.response.length'][0][1], equal_to(20))
+
+        # histogram
+        histogram = metrics['timer']
+        assert_that(histogram, has_item('nginx.upstream.response.time'))
+        assert_that(histogram['nginx.upstream.response.time'], equal_to([2.001 + 0.345]))
+
+    def test_upstream_status_and_length2(self):
+        """
+        Test 3XX status for response length as well.
+        """
+        log_format = '$remote_addr - $remote_user [$time_local] ' + \
+                     '"$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" ' + \
+                     'rt=$request_time ut="$upstream_response_time" cs=$upstream_cache_status ' + \
+                     'us=$upstream_status $upstream_response_length'
+
+        line = \
+            '1.2.3.4 - - [22/Jan/2010:19:34:21 +0300] "GET /foo/ HTTP/1.1" 200 11078 ' + \
+            '"http://www.rambler.ru/" "Mozilla/5.0 (Windows; U; Windows NT 5.1" rt=0.010 ut="2.001, 0.345" cs=MISS ' + \
+            'us=300 40'
+
+        # run single method
+        collector = NginxAccessLogsCollector(object=self.fake_object, tail=[])
+        collector.upstreams(NginxAccessLogParser(log_format).parse(line))
+
+        # check
+        metrics = self.fake_object.statsd.current
+        assert_that(metrics, has_item('counter'))
+        assert_that(metrics, has_item('timer'))
+
+        # counters
+        counters = metrics['counter']
+        assert_that(counters, has_item('nginx.upstream.request.count'))
+        assert_that(counters, has_item('nginx.upstream.next.count'))
+        assert_that(counters, has_item('nginx.cache.miss'))
+        assert_that(counters, has_item('nginx.upstream.http.status.3xx'))
+        assert_that(counters, has_item('nginx.upstream.http.response.length'))
+        assert_that(counters['nginx.upstream.request.count'][0][1], equal_to(1))
+        assert_that(counters['nginx.upstream.next.count'][0][1], equal_to(1))
+        assert_that(counters['nginx.upstream.http.status.3xx'][0][1], equal_to(1))
+        assert_that(counters['nginx.upstream.http.response.length'][0][1], equal_to(40))
+
+        # histogram
+        histogram = metrics['timer']
+        assert_that(histogram, has_item('nginx.upstream.response.time'))
+        assert_that(histogram['nginx.upstream.response.time'], equal_to([2.001 + 0.345]))
+
+    def test_upstream_status_discarded(self):
+        log_format = '$remote_addr - $remote_user [$time_local] ' + \
+                     '"$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" ' + \
+                     'rt=$request_time ut="$upstream_response_time" cs=$upstream_cache_status ' + \
+                     'us=$upstream_status $upstream_response_length'
+
+        line = \
+            '1.2.3.4 - - [22/Jan/2010:19:34:21 +0300] "GET /foo/ HTTP/1.1" 200 11078 ' + \
+            '"http://www.rambler.ru/" "Mozilla/5.0 (Windows; U; Windows NT 5.1" rt=0.010 ut="2.001, 0.345" cs=MISS ' + \
+            'us=499 0'
+
+        # run single method
+        collector = NginxAccessLogsCollector(object=self.fake_object, tail=[])
+        collector.upstreams(NginxAccessLogParser(log_format).parse(line))
+
+        # check
+        metrics = self.fake_object.statsd.current
+        assert_that(metrics, has_item('counter'))
+        assert_that(metrics, has_item('timer'))
+
+        # counters
+        counters = metrics['counter']
+        assert_that(counters, has_item('nginx.upstream.request.count'))
+        assert_that(counters, has_item('nginx.upstream.next.count'))
+        assert_that(counters, has_item('nginx.cache.miss'))
+        assert_that(counters, has_item('nginx.upstream.http.status.discarded'))
+        assert_that(counters, not has_item('nginx.upstream.http.response.length'))
+        assert_that(counters['nginx.upstream.request.count'][0][1], equal_to(1))
+        assert_that(counters['nginx.upstream.next.count'][0][1], equal_to(1))
+        assert_that(counters['nginx.upstream.http.status.discarded'][0][1], equal_to(1))
+
+        # histogram
+        histogram = metrics['timer']
+        assert_that(histogram, has_item('nginx.upstream.response.time'))
+        assert_that(histogram['nginx.upstream.response.time'], equal_to([2.001 + 0.345]))
+
 
 class LogsOverallTestCase(NginxCollectorTestCase):
 
@@ -118,6 +318,14 @@ class LogsOverallTestCase(NginxCollectorTestCase):
         assert_that(counter['C|nginx.http.status.2xx'][0][1], equal_to(2))
         assert_that(counter['C|nginx.http.v1_1'][0][1], equal_to(4))
         assert_that(counter['C|nginx.http.request.body_bytes_sent'][0][1], equal_to(84 + 2 + 1093 + 0))
+
+        # check zero values
+        for counter_name in collector.counters:
+            assert_that(counter, has_key('C|nginx.%s' % counter_name))
+            if counter_name != 'http.status.2xx' and \
+                    counter_name != 'http.status.3xx' and \
+                    counter_name != 'http.status.4xx':
+                assert_that(counter['C|nginx.%s' % counter_name][0][1], equal_to(0))
 
     def test_extended(self):
         log_format = '$remote_addr - $remote_user [$time_local] ' + \
@@ -163,9 +371,16 @@ class LogsOverallTestCase(NginxCollectorTestCase):
         assert_that(counter['C|nginx.upstream.next.count'][0][1], equal_to(1))
         assert_that(timer['G|nginx.upstream.response.time.max'][0][1], equal_to(2.001+0.345))
 
+        # check zero values
+        for counter_name in collector.counters:
+            assert_that(counter, has_key('C|nginx.%s' % counter_name))
+            if counter_name != 'http.status.2xx' and \
+                    counter_name != 'http.status.3xx':
+                assert_that(counter['C|nginx.%s' % counter_name][0][1], equal_to(0))
+
     def test_extend_duplicates(self):
         """
-        Test a log format that defines duplicate variables (NAAS-686).
+        Test a log format that defines duplicate variables.
         """
         log_format = '$remote_addr - $remote_addr - $remote_addr - $remote_user [$time_local] ' + \
                      '"$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" ' + \
@@ -210,9 +425,16 @@ class LogsOverallTestCase(NginxCollectorTestCase):
         assert_that(counter['C|nginx.upstream.next.count'][0][1], equal_to(1))
         assert_that(timer['G|nginx.upstream.response.time.max'][0][1], equal_to(2.001+0.345))
 
+        # check zero values
+        for counter_name in collector.counters:
+            assert_that(counter, has_key('C|nginx.%s' % counter_name))
+            if counter_name != 'http.status.2xx' and \
+                    counter_name != 'http.status.3xx':
+                assert_that(counter['C|nginx.%s' % counter_name][0][1], equal_to(0))
+
     def test_extend_duplicates_reported(self):
         """
-        Test the specific reported bug format (NAAS-686).
+        Test the specific reported bug format.
         """
         log_format = '$remote_addr - $remote_user [$time_local]  ' + \
                      '"$request" $status $body_bytes_sent ' + \
@@ -250,3 +472,9 @@ class LogsOverallTestCase(NginxCollectorTestCase):
         assert_that(counter['C|nginx.http.status.2xx'][0][1], equal_to(2))
         assert_that(counter['C|nginx.http.request.length'][0][1], equal_to(608))
         assert_that(counter['C|nginx.http.request.body_bytes_sent'][0][1], equal_to(41110))
+
+        # check zero values
+        for counter_name in collector.counters:
+            assert_that(counter, has_key('C|nginx.%s' % counter_name))
+            if counter_name != 'http.status.2xx':
+                assert_that(counter['C|nginx.%s' % counter_name][0][1], equal_to(0))

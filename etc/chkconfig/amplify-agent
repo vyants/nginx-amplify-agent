@@ -48,7 +48,9 @@ if [ -z "$nginxconf" ]; then
 fi
 
 if [ -f "$nginxconf" ]; then
-    config_nginx_user=`grep -v '#' ${nginxconf} | \
+    config_nginx_user=`grep 'user[[:space:]]' ${nginxconf} | \
+                       grep -v '[#].*user.*;' | \
+                       grep -v '_user' | \
                        sed -n -e 's/.*\(user[[:space:]][[:space:]]*[^;]*\);.*/\1/p' | \
                        awk '{ print $2 }' | head -1`
 fi

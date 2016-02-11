@@ -3,6 +3,8 @@ from amplify.agent.containers.nginx.log.error import NginxErrorLogParser
 from amplify.agent.util.tail import FileTail
 from amplify.agent.context import context
 from amplify.agent.containers.abstract import AbstractCollector
+from amplify.agent.containers.nginx.config.config import ERROR_LOG_LEVELS
+
 
 __author__ = "Mike Belov"
 __copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
@@ -12,18 +14,38 @@ __maintainer__ = "Mike Belov"
 __email__ = "dedm@nginx.com"
 
 
-
 class NginxErrorLogsCollector(AbstractCollector):
 
     short_name = 'nginx_elog'
 
-    def __init__(self, filename=None, log_format=None, tail=None, **kwargs):
+    counters = (
+        'http.request.buffered',
+        #'http.request.malformed',
+        #'http.request.failed',
+        #'http.response.failed',
+        'upstream.response.buffered',
+        'upstream.request.failed',
+        'upstream.response.failed',
+        #'http.ssl_handshake.failed',
+        #'upstream.fastcgi.errors',
+        #'http.request.limited',
+        #'cache.fs.errors',
+        #'cache.lock.timeouts',
+        #'upstream.health_check.failed',
+        #'workers.warn.low_conn'
+    )
+
+    def __init__(self, filename=None, level=None, log_format=None, tail=None, **kwargs):
         super(NginxErrorLogsCollector, self).__init__(**kwargs)
         self.filename = filename
+        self.level = level
         self.parser = NginxErrorLogParser()
         self.tail = tail if tail is not None else FileTail(filename)
 
     def collect(self):
+        if ERROR_LOG_LEVELS.index(self.level) <= 3:
+            self.init_counters()  # set all error counters to 0
+
         count = 0
         for line in self.tail:
             count += 1

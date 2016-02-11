@@ -31,7 +31,7 @@ class NginxCommonMetaCollector(AbstractCollector):
             'stub_status_enabled': self.object.stub_status_enabled,
             'status_module_enabled': self.object.plus_status_enabled,
             'stub_status_url': self.object.stub_status_url,
-            'plus_status_url': self.object.plus_status_url,
+            'plus_status_url': self.object.plus_status_external_url or self.object.plus_status_internal_url,
             'version': None,
             'plus': {
                 'enabled': False,

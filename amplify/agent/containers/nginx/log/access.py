@@ -3,7 +3,7 @@ import re
 
 __author__ = "Mike Belov"
 __copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
-__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev"]
+__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
 __email__ = "dedm@nginx.com"
@@ -13,10 +13,9 @@ REQUEST_RE = re.compile(r'(?P<http_method>[A-Z]+) (?P<request_uri>/.*) HTTP/(?P<
 
 class NginxAccessLogParser(object):
     """
-    Nginx error log parser
-
+    Nginx access log parser
     """
-    short_name = 'nginx_elog'
+    short_name = 'nginx_alog'
 
     combined_format = '$remote_addr - $remote_user [$time_local] "$request" ' + \
                       '$status $body_bytes_sent "$http_referer" "$http_user_agent"'
@@ -37,6 +36,7 @@ class NginxAccessLogParser(object):
         'time_iso8601': ['.+', str],
         'time_local': ['.+', str],
         'upstream_response_time': ['.+', str],
+        'upstream_response_length': ['\d+', int],
         'upstream_connect_time': ['.+', str],
         'upstream_header_time': ['.+', str],
         'upstream_status': ['.+', str],

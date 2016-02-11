@@ -36,7 +36,9 @@ if [ -z "$NGINXCONF" ]; then
 fi
 
 if [ -f "$NGINXCONF" ]; then
-    CONFIG_NGINX_USER=`grep -v '#' ${NGINXCONF} | \
+    CONFIG_NGINX_USER=`grep 'user[[:space:]]' ${NGINXCONF} | \
+                       grep -v '[#].*user.*;' | \
+                       grep -v '_user' | \
                        sed -n -e 's/.*\(user[[:space:]][[:space:]]*[^;]*\);.*/\1/p' | \
                        awk '{ print $2 }' | head -1`
 fi

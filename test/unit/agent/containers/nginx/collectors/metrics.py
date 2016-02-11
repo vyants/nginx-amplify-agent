@@ -51,7 +51,6 @@ class NginxMetricsTestCase(RealNginxTestCase):
         assert_that(gauges, has_item('nginx.http.request.writing'))
         assert_that(gauges, has_item('nginx.http.request.reading'))
 
-
     @nginx_plus_test
     def test_plus_status(self):
         container = NginxContainer()

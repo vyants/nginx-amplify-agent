@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import time
 import hashlib
+import abc
 
 from collections import defaultdict
 from threading import current_thread
@@ -140,6 +141,8 @@ class AbstractCollector(object):
     """
     short_name = None
 
+    counters = ()  # For sending 0 values
+
     def __init__(self, object=None, interval=None):
         self.object = object
         self.interval = interval
@@ -172,6 +175,10 @@ class AbstractCollector(object):
             context.log.error('%s failed' % self.object.id, exc_info=True)
             raise
 
+    def init_counters(self):
+        for counter in self.counters:
+            self.statsd.incr(counter, value=0)
+
     def _collect(self):
         m_size_b, m_rss_b = memusage.report()
         start_time = time.time()
@@ -191,12 +198,13 @@ class AbstractCollector(object):
             elif m_size_a > m_size_b:
                 context.log.debug('%s VSIZE MEMORY INCREASE! diff %s' % (self.object.id, m_size_a - m_size_b))
 
+    def _sleep(self):
+        time.sleep(self.interval)
+
+    @abc.abstractmethod
     def collect(self):
         """
         Real collect method
         Override it
         """
         pass
-
-    def _sleep(self):
-        time.sleep(self.interval)

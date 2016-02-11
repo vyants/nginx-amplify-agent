@@ -5,9 +5,10 @@ from test.base import NginxCollectorTestCase
 from amplify.agent.containers.nginx.log.error import NginxErrorLogParser
 from amplify.agent.containers.nginx.collectors.errorlog import NginxErrorLogsCollector
 
+
 __author__ = "Mike Belov"
 __copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
-__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev"]
+__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
 __email__ = "dedm@nginx.com"
@@ -36,7 +37,7 @@ class LogsOverallTestCase(NginxCollectorTestCase):
             '"uwsgi://127.0.0.1:3131", host: "localhost:5000"'
         ]
 
-        collector = NginxErrorLogsCollector(object=self.fake_object, tail=lines)
+        collector = NginxErrorLogsCollector(level='warn', object=self.fake_object, tail=lines)
         collector.collect()
 
         # check
@@ -51,3 +52,7 @@ class LogsOverallTestCase(NginxCollectorTestCase):
         # values
         assert_that(counter['C|nginx.upstream.response.failed'][0][1], equal_to(2))
         assert_that(counter['C|nginx.upstream.response.buffered'][0][1], equal_to(1))
+
+        # check zero values
+        for error_counter in collector.counters:
+            assert_that(counter, has_key('C|nginx.%s' % error_counter))

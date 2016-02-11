@@ -193,7 +193,7 @@ class NginxMetricsCollector(AbstractCollector):
         don't look for stub_status
         if there's no extended status easily accessible, proceed with stub_status
         """
-        if self.object.plus_status_enabled:
+        if self.object.plus_status_enabled and self.object.plus_status_internal_url:
             self.plus_status()
         elif self.object.stub_status_enabled:
             self.stub_status()
@@ -279,9 +279,9 @@ class NginxMetricsCollector(AbstractCollector):
 
         # get plus status body
         try:
-            status = context.http_client.get(self.object.plus_status_url, timeout=1)
+            status = context.http_client.get(self.object.plus_status_internal_url, timeout=1)
         except:
-            context.log.error('failed to check plus_status url %s' % self.object.plus_status_url)
+            context.log.error('failed to check plus_status url %s' % self.object.plus_status_internal_url)
             context.log.debug('additional info', exc_info=True)
 
         connections = status.get('connections', {})

@@ -76,6 +76,17 @@ class NginxCollectorTestCase(BaseTestCase):
         class FakeNginxObject(AbstractObject):
             type = 'nginx'
 
+            error_log_levels = (
+                'debug',
+                'info',
+                'notice',
+                'warn',
+                'error',
+                'crit',
+                'alert',
+                'emerg'
+            )
+
         local_id = random.randint(1, 10000000)
 
         self.fake_object = FakeNginxObject(

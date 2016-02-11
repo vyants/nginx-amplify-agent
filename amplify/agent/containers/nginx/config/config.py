@@ -18,6 +18,18 @@ __maintainer__ = "Mike Belov"
 __email__ = "dedm@nginx.com"
 
 
+ERROR_LOG_LEVELS = (
+    'debug',
+    'info',
+    'notice',
+    'warn',
+    'error',
+    'crit',
+    'alert',
+    'emerg'
+)
+
+
 class NginxConfig(object):
     """
     Nginx config representation
@@ -36,9 +48,10 @@ class NginxConfig(object):
         self.prefix = prefix
         self.log_formats = {}
         self.access_logs = {}
-        self.error_logs = []
-        self.stub_status = []
-        self.plus_status = []
+        self.error_logs = {}
+        self.stub_status_urls = []
+        self.plus_status_external_urls = []
+        self.plus_status_internal_urls = []
         self.test_errors = []
         self.tree = {}
         self.files = {}
@@ -99,7 +112,10 @@ class NginxConfig(object):
                     if er_log_definition == 'off':
                         continue
 
-                    log_name = er_log_definition.split(' ')[0]
+                    split_er_log_definition = er_log_definition.split(' ')
+                    log_name = split_er_log_definition[0]
+                    log_level = split_er_log_definition[-1] \
+                        if split_er_log_definition[-1] in ERROR_LOG_LEVELS else 'error'  # nginx default log level
                     log_name = re.sub('[\'"]', '', log_name)  # remove all ' and "
                     if log_name.startswith('syslog'):
                         continue
@@ -107,7 +123,7 @@ class NginxConfig(object):
                         log_name = '%s/%s' % (self.prefix, log_name)
 
                     if log_name not in self.error_logs:
-                        self.error_logs.append(log_name)
+                        self.error_logs[log_name] = log_level
             elif key == 'access_log':
                 access_logs = value if isinstance(value, list) else [value]
                 for ac_log_definition in access_logs:
@@ -168,12 +184,19 @@ class NginxConfig(object):
                     ctx = current_ctx
             elif key == 'stub_status' and ctx and 'ip_port' in ctx:
                 for url in self.__status_url(ctx):
-                    if url not in self.stub_status:
-                        self.stub_status.append(url)
+                    if url not in self.stub_status_urls:
+                        self.stub_status_urls.append(url)
             elif key == 'status' and ctx and 'ip_port' in ctx:
+                # use different url builders for external and internal urls
                 for url in self.__status_url(ctx, server_preferred=True):
-                    if url not in self.plus_status:
-                        self.plus_status.append(url)
+                    if url not in self.plus_status_external_urls:
+                        self.plus_status_external_urls.append(url)
+
+                # for internal (agent) usage local ip address is a better choice,
+                # because the external url might not be accessible from a host
+                for url in self.__status_url(ctx, server_preferred=False):
+                    if url not in self.plus_status_internal_urls:
+                        self.plus_status_internal_urls.append(url)
             elif isinstance(value, dict):
                 self.__recursive_search(subtree=value, ctx=ctx)
             elif isinstance(value, list):
@@ -278,4 +301,4 @@ class NginxConfig(object):
 
         error_log_path = '%s/logs/error.log' % self.prefix
         if os.path.isfile(error_log_path) and error_log_path not in self.error_logs:
-            self.error_logs.append(error_log_path)
+            self.error_logs[error_log_path] = 'error'

@@ -246,3 +246,25 @@ class LogParserTestCase(BaseTestCase):
         assert_that(parsed, has_item('request_uri'))
         assert_that(parsed['request_uri'], equal_to('/'))
         assert_that(parsed['http_version'], equal_to('2.0'))
+
+    def test_tab_config(self):
+        user_format = \
+            '"$time_local"\t"$remote_addr"\t"$http_host"\t"$request"\t"$status"\t"$body_bytes_sent\t' + \
+            '"$http_referer"\t"$http_user_agent"\t"$http_x_forwarded_for"'
+
+        expected_keys = [
+            'time_local', 'remote_addr', 'http_host', 'request', 'status', 'body_bytes_sent', 'http_referer',
+            'http_user_agent', 'http_x_forwarded_for'
+        ]
+
+        simple_line = \
+            '"27/Jan/2016:12:30:04 -0800"	"173.186.135.227"	"leete.ru"	' + \
+            '"GET /img/_data/combined/j6vnc0.css HTTP/2.0"	"200"	"5909	"https://leete.ru/img/"' + \
+            '	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_3) AppleWebKit/537.36 (KHTML, like Gecko) ' + \
+            'Chrome/47.0.2526.111 Safari/537.36"	"-"'
+
+        parser = NginxAccessLogParser(user_format)
+        parsed = parser.parse(simple_line)
+
+        for key in expected_keys:
+            assert_that(parsed, has_item(key))

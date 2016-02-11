@@ -393,6 +393,7 @@ class NginxConfigParser(object):
                             format_name, format_value = gwe.group(1), gwe.group(2)
 
                             indexed_value = self.__idx_save(format_value, file_index, row.line_number)
+                            indexed_value = (indexed_value[0].replace('\\t', '\t'), indexed_value[1])  # tab work around
                             if key in result:
                                 result[key][format_name] = indexed_value
                             else:
@@ -436,7 +437,7 @@ class NginxConfigParser(object):
 
         This prompted us to refactor this process out to a separate function.  Because dictionaries are passed by
         reference in Python, we can alter the value dictionary in this local __func__ scope and have it affect the dict
-        in the parent (PYTHON MAGIC!?!?!?).
+        in the parent.
 
         :param result: dict Passed and altered by reference from the parent __func__ scope
         :param key:

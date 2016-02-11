@@ -16,6 +16,15 @@ class NginxAccessLogsCollector(AbstractCollector):
 
     short_name = 'nginx_alog'
 
+    counters = (
+        'http.status.1xx',
+        'http.status.2xx',
+        'http.status.3xx',
+        'http.status.4xx',
+        'http.status.5xx',
+        'http.status.discarded'
+    )
+
     def __init__(self, filename=None, log_format=None, tail=None, **kwargs):
         super(NginxAccessLogsCollector, self).__init__(**kwargs)
         self.filename = filename
@@ -23,6 +32,8 @@ class NginxAccessLogsCollector(AbstractCollector):
         self.tail = tail if tail is not None else FileTail(filename)
 
     def collect(self):
+        self.init_counters()  # set all counters to 0
+
         count = 0
         for line in self.tail:
             count += 1
@@ -160,7 +171,7 @@ class NginxAccessLogsCollector(AbstractCollector):
         nginx.cache.stale
         nginx.cache.updating
         nginx.upstream.request.count
-        nginx.upstream.next_count
+        nginx.upstream.next.count
         nginx.upstream.connect.time
         nginx.upstream.connect.time.median
         nginx.upstream.connect.time.max
@@ -176,19 +187,40 @@ class NginxAccessLogsCollector(AbstractCollector):
         nginx.upstream.response.time.max
         nginx.upstream.response.time.pctl95
         nginx.upstream.response.time.count
+        nginx.upstream.http.status.1xx
+        nginx.upstream.http.status.2xx
+        nginx.upstream.http.status.3xx
+        nginx.upstream.http.status.4xx
+        nginx.upstream.http.status.5xx
+        nginx.upstream.http.status.discarded
+        nginx.upstream.http.response.length
         """
         # TODO: upstream matching
 
         # find out if we have info about upstreams
+        empty_values = ('-', '')
         upstream_data_found = False
         for key in data.iterkeys():
-            if key.startswith('upstream'):
+            if key.startswith('upstream') and data[key] not in empty_values:
                 upstream_data_found = True
                 break
 
         if not upstream_data_found:
             return
 
+        # counters
+        upstream_response = False
+        if 'upstream_status' in data:
+            status = data['upstream_status']
+            suffix = 'discarded' if status in ('499', '444', '408') else '%sxx' % status[0]
+            upstream_response = True if suffix in ('2xx', '3xx') else False  # Set flag for upstream length processing
+            metric_name = 'upstream.http.status.%s' % suffix
+            self.statsd.incr(metric_name)
+
+        if upstream_response and 'upstream_response_length' in data:
+            self.statsd.incr('upstream.http.response.length', data['upstream_response_length'])
+
+        # gauges
         upstream_switches = None
         for metric_name, key_name in {
             'upstream.connect.time': 'upstream_connect_time',
@@ -208,6 +240,7 @@ class NginxAccessLogsCollector(AbstractCollector):
         # log upstream switches
         self.statsd.incr('upstream.next.count', 0 if upstream_switches is None else upstream_switches)
 
+        # cache
         if 'upstream_cache_status' in data:
             cache_status = data['upstream_cache_status']
             if cache_status != '-':

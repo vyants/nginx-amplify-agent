@@ -19,6 +19,10 @@ simple_config = os.getcwd() + '/test/fixtures/nginx/simple/nginx.conf'
 complex_config = os.getcwd() + '/test/fixtures/nginx/complex/nginx.conf'
 huge_config = os.getcwd() + '/test/fixtures/nginx/huge/nginx.conf'
 broken_config = os.getcwd() + '/test/fixtures/nginx/broken/nginx.conf'
+proxy_buffers_simple_config = os.getcwd() + '/test/fixtures/nginx/proxy_buffers_simple/nginx.conf'
+proxy_buffers_complex_config = os.getcwd() + '/test/fixtures/nginx/proxy_buffers_complex/nginx.conf'
+tabs_config = os.getcwd() + '/test/fixtures/nginx/custom/tabs.conf'
+fastcgi_config = os.getcwd() + '/test/fixtures/nginx/fastcgi/nginx.conf'
 
 
 class ConfigTestCase(BaseTestCase):
@@ -29,7 +33,7 @@ class ConfigTestCase(BaseTestCase):
 
         # error logs
         assert_that(config.error_logs, has_length(1))
-        assert_that(config.error_logs[0], equal_to('/var/log/nginx/error.log'))
+        assert_that(config.error_logs, has_key('/var/log/nginx/error.log'))
 
         # access logs
         assert_that(config.access_logs, has_length(2))
@@ -50,13 +54,16 @@ class ConfigTestCase(BaseTestCase):
             )
         )
 
-        # stub status url
-        assert_that(config.stub_status, has_length(1))
-        assert_that(config.stub_status[0], equal_to('127.0.0.1:81/basic_status'))
+        # stub status urls
+        assert_that(config.stub_status_urls, has_length(1))
+        assert_that(config.stub_status_urls[0], equal_to('127.0.0.1:81/basic_status'))
 
-        # status url
-        assert_that(config.plus_status, has_length(1))
-        assert_that(config.plus_status[0], equal_to('127.0.0.1:81/plus_status'))
+        # status urls
+        assert_that(config.plus_status_external_urls, has_length(1))
+        assert_that(config.plus_status_external_urls[0], equal_to('127.0.0.1:81/plus_status'))
+
+        assert_that(config.plus_status_internal_urls, has_length(1))
+        assert_that(config.plus_status_internal_urls[0], equal_to('127.0.0.1:81/plus_status'))
 
     def test_parse_huge(self):
         config = NginxConfig(huge_config)
@@ -64,7 +71,7 @@ class ConfigTestCase(BaseTestCase):
 
         # error logs
         assert_that(config.error_logs, has_length(1))
-        assert_that(config.error_logs[0], equal_to('/var/log/nginx-error.log'))
+        assert_that(config.error_logs, has_key('/var/log/nginx-error.log'))
 
         # access logs
         assert_that(config.access_logs, has_length(2))
@@ -84,8 +91,8 @@ class ConfigTestCase(BaseTestCase):
         )
 
         # stub status url
-        assert_that(config.stub_status, has_length(2))
-        assert_that(config.stub_status[0], equal_to('127.0.0.1:80/nginx_status'))
+        assert_that(config.stub_status_urls, has_length(2))
+        assert_that(config.stub_status_urls[0], equal_to('127.0.0.1:80/nginx_status'))
 
     def test_parse_complex(self):
         config = NginxConfig(complex_config)
@@ -106,7 +113,7 @@ class ConfigTestCase(BaseTestCase):
         assert_that(config.log_formats, has_length(0))
 
         # stub status url
-        assert_that(config.stub_status, has_length(0))
+        assert_that(config.stub_status_urls, has_length(0))
 
     def test_broken(self):
         config = NginxConfig(broken_config)
@@ -121,3 +128,59 @@ class ConfigTestCase(BaseTestCase):
 
         assert_that(config.tree, not_(equal_to({})))
         assert_that(config.parser_errors, has_length(5))  # 5 missing includes
+
+    def test_proxy_buffers_simple(self):
+        config = NginxConfig(proxy_buffers_simple_config)
+        config.full_parse()
+
+        assert_that(config.tree, has_key('http'))
+
+        http_bucket = config.tree['http'][0]
+        assert_that(http_bucket, has_key('proxy_buffering'))
+        assert_that(http_bucket, has_key('proxy_buffers'))
+
+        assert_that(config.parser_errors, has_length(0))
+        assert_that(config.test_errors, has_length(0))
+
+    def test_proxy_buffers_complex(self):
+        config = NginxConfig(proxy_buffers_complex_config)
+        config.full_parse()
+
+        assert_that(config.tree, has_key('http'))
+
+        http_bucket = config.tree['http'][0]
+        assert_that(http_bucket, has_key('proxy_buffering'))
+        assert_that(http_bucket, has_key('proxy_buffers'))
+
+        location_bucket = config.tree['http'][0]['server'][0][0]['location']['/'][0]
+        assert_that(location_bucket, has_key('proxy_buffering'))
+        assert_that(location_bucket, has_key('proxy_buffers'))
+
+        assert_that(config.parser_errors, has_length(0))
+        assert_that(config.test_errors, has_length(0))
+
+    def test_parse_tabbed_config(self):
+        config = NginxConfig(tabs_config)
+        config.full_parse()
+
+        assert_that(config.log_formats, has_key('main'))
+        assert_that(
+            config.log_formats['main'],
+            equal_to('"$time_local"\t"$remote_addr"\t"$http_host"\t"$request"\t'
+                     '"$status"\t"$body_bytes_sent\t"$http_referer"\t'
+                     '"$http_user_agent"\t"$http_x_forwarded_for"')
+        )
+
+    def test_fastcgi(self):
+        config = NginxConfig(fastcgi_config)
+        config.full_parse()
+
+        assert_that(config.tree, has_key('http'))
+
+        http_bucket = config.tree['http'][0]
+        server_bucket = http_bucket['server'][0][0]  # fastcgi server tree
+        location = server_bucket['location']['~ \\.php$'][0]  # fastcgi pass location tree
+
+        assert_that(location, has_key('fastcgi_pass'))
+        assert_that(location, has_key('fastcgi_param'))
+        assert_that(location['fastcgi_param'], has_length(17))

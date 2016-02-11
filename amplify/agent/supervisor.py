@@ -87,20 +87,27 @@ class Supervisor(Singleton):
 
         # main cycle
         while self.is_running:
-            context.inc_action_id()
-
-            for container in self.containers.itervalues():
-                container._discover_objects()
-                container.run_objects()
-                container.schedule_cloud_commands()
-
             try:
-                self.talk_with_cloud(top_object=context.top_object.definition)
-            except AmplifyCriticalException:
-                pass
+                time.sleep(5.0)
+                context.inc_action_id()
 
-            self.check_bridge()
-            time.sleep(5.0)
+                for container in self.containers.itervalues():
+                    container._discover_objects()
+                    container.run_objects()
+                    container.schedule_cloud_commands()
+
+                try:
+                    self.talk_with_cloud(top_object=context.top_object.definition)
+                except AmplifyCriticalException:
+                    pass
+
+                self.check_bridge()
+            except OSError as e:
+                if e.errno == 12:  # OSError errno 12 is a memory error (unable to allocate, out of memory, etc.)
+                    context.default_log.error('OSError: [Errno %s] %s' % (e.errno, e.message), exc_info=True)
+                    continue
+                else:
+                    raise e
 
     def stop(self):
         self.is_running = False

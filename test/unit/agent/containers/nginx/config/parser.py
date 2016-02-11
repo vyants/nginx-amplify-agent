@@ -198,7 +198,7 @@ class ParserTestCase(BaseTestCase):
 
     def test_parse_bad_access_and_error_log(self):
         """
-        Test case for NAAS-696, ignoring access_log and error_log edge cases.
+        Test case for ignoring access_log and error_log edge cases.
         """
         cfg = NginxConfigParser(bad_log_directives_config)
 

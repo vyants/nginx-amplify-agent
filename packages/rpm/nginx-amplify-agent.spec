@@ -42,7 +42,6 @@ This package installs and runs NGINX Amplify Agent daemon.
 See http://nginx.com/amplify for more information
 
 
-
 %prep
 %setup -q -n nginx-amplify-agent-%{version}
 cp -p %{SOURCE0} .
@@ -137,9 +136,11 @@ fi
 
 
 %changelog
-* Tue Jan 19 2016 Mike Belov <dedm@nginx.com> 0.28-2
-- 0.28-2
+* Thu Feb 11 2016 Mike Belov <dedm@nginx.com> 0.29-1
+- 0.29-1
 - Bug fixes
+- NGINX+ status support improvements
+- New NGINX metrics
 
 * Tue Jan 19 2016 Mike Belov <dedm@nginx.com> 0.28-1
 - 0.28-1

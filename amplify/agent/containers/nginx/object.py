@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-import requests
-
 from amplify.agent.util import host
 from amplify.agent.context import context
 from amplify.agent.containers.abstract import AbstractObject
@@ -39,11 +37,11 @@ class NginxObject(AbstractObject):
         self.config = NginxConfig(self.conf_path, prefix=self.prefix)
         self.config.full_parse()
 
-        self.plus_status_url = self.get_alive_plus_status_url()
-        self.plus_status_enabled = True if self.plus_status_url else False
+        self.plus_status_external_url, self.plus_status_internal_url = self.get_alive_plus_status_urls()
+        self.plus_status_enabled = True if (self.plus_status_external_url or self.plus_status_internal_url) else False
+
         self.stub_status_url = self.get_alive_stub_status_url()
         self.stub_status_enabled = True if self.stub_status_url else False
-        self.status_module_enabled = False  # nginx+
 
         self.upload_config = self.data.get('upload_config') or \
                              context.app_config['containers'][self.type].get('upload_config', False)
@@ -96,13 +94,14 @@ class NginxObject(AbstractObject):
                 context.log.debug('additional info:', exc_info=True)
 
         # error logs
-        for log_filename in self.config.error_logs:
+        for log_filename, log_level in self.config.error_logs.iteritems():
             try:
                 self.collectors.append(
                     NginxErrorLogsCollector(
                         object=self,
                         interval=self.intervals['logs'],
-                        filename=log_filename
+                        filename=log_filename,
+                        level=log_level
                     )
                 )
 
@@ -117,40 +116,71 @@ class NginxObject(AbstractObject):
                 context.log.debug('additional info:', exc_info=True)
 
     def get_alive_stub_status_url(self):
-        return self.__get_alive_status(self.config.stub_status, type='stub')
-
-    def get_alive_plus_status_url(self):
-        return self.__get_alive_status(self.config.plus_status, type='plus')
-
-    def __get_alive_status(self, url_list, type='stub'):
         """
-        Tries to find alive stub status url
-        Returns first alive url or None if all founded urls are not responding
-
-        :return: None or str
+        Tries to get alive stub_status url
+        Records some events about it
+        :return:
         """
-        for stub_url in url_list:
-            for proto in ('http://', 'https://'):
-                try:
-                    full_stub_url = '%s%s' % (proto, stub_url)
-                    stub = requests.get(full_stub_url, timeout=1, headers={'Connection': 'close'})
-                    stub.raise_for_status()
-
-                    # Send stub detected event
-                    self.eventd.event(
-                        level=INFO,
-                        message='nginx %s_status detected, %s' % (type, full_stub_url)
-                    )
-
-                    return full_stub_url
-                except:
-                    context.log.error('failed to check %s_status url %s%s' % (type, proto, stub_url))
-                    context.log.debug('additional info', exc_info=True)
-
-        # Send stub undetected event
-        if type == 'stub':
+        stub_status_url = self.__get_alive_status(self.config.stub_status_urls)
+        if stub_status_url:
+            # Send stub detected event
             self.eventd.event(
                 level=INFO,
-                message='nginx %s_status not found in nginx config' % type
+                message='nginx stub_status detected, %s' % stub_status_url
             )
+        else:
+            self.eventd.event(
+                level=INFO,
+                message='nginx stub_status not found in nginx config'
+            )
+        return stub_status_url
+
+    def get_alive_plus_status_urls(self):
+        """
+        Tries to get alive plus urls
+        There are two types of plus status urls: internal and external
+        - internal are for the agent and usually they have the localhost ip in address
+        - external are for the browsers and usually they have a normal server name
+
+        Returns a tuple of str or Nones - (external_url, internal_url)
+
+        Even if external status url is not responding (cannot be accesible from the host)
+        we should return it to show in our UI
+
+        :return: (str or None, str or None)
+        """
+        internal_status_url = self.__get_alive_status(self.config.plus_status_internal_urls)
+        if internal_status_url:
+            self.eventd.event(
+                level=INFO,
+                message='nginx internal plus_status detected, %s' % internal_status_url
+            )
+
+        external_status_url = self.__get_alive_status(self.config.plus_status_external_urls)
+        if len(self.config.plus_status_external_urls) > 0:
+            if not external_status_url:
+                external_status_url = 'http://%s' % self.config.plus_status_external_urls[0]
+
+            self.eventd.event(
+                level=INFO,
+                message='nginx external plus_status detected, %s' % external_status_url
+            )
+
+        return external_status_url, internal_status_url
+
+    def __get_alive_status(self, url_list):
+        """
+        Tries to find alive status url
+        Returns first alive url or None if all founded urls are not responding
+        :return: None or str
+        """
+        for url in url_list:
+            for proto in ('http://', 'https://'):
+                full_url = '%s%s' % (proto, url)
+                try:
+                    context.http_client.get(full_url, timeout=0.5, json=False)
+                    return full_url
+                except:
+                    context.log.error('failed to check stub/plus status url %s' % full_url)
+                    context.log.debug('additional info', exc_info=True)
         return None
