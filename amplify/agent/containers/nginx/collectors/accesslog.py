@@ -5,7 +5,7 @@ from amplify.agent.context import context
 from amplify.agent.containers.abstract import AbstractCollector
 
 __author__ = "Mike Belov"
-__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
+__copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
 __credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
@@ -16,13 +16,51 @@ class NginxAccessLogsCollector(AbstractCollector):
 
     short_name = 'nginx_alog'
 
-    counters = (
-        'http.status.1xx',
-        'http.status.2xx',
-        'http.status.3xx',
-        'http.status.4xx',
-        'http.status.5xx',
-        'http.status.discarded'
+    counters = {
+        'http.method.head': 'http_method',
+        'http.method.get': 'http_method',
+        'http.method.post': 'http_method',
+        'http.method.put': 'http_method',
+        'http.method.delete': 'http_method',
+        'http.method.options': 'http_method',
+        'http.method.other': 'http_method',
+        'http.status.1xx': 'status',
+        'http.status.2xx': 'status',
+        'http.status.3xx': 'status',
+        'http.status.4xx': 'status',
+        'http.status.5xx': 'status',
+        'http.status.discarded': 'status',
+        'http.v0_9': 'http_version',
+        'http.v1_0': 'http_version',
+        'http.v1_1': 'http_version',
+        'http.v2': 'http_version',
+        'http.request.body_bytes_sent': 'body_bytes_sent',
+        'http.request.bytes_sent': 'bytes_sent',
+        'http.request.length': 'request_length',
+        'upstream.http.status.1xx': 'upstream_status',
+        'upstream.http.status.2xx': 'upstream_status',
+        'upstream.http.status.3xx': 'upstream_status',
+        'upstream.http.status.4xx': 'upstream_status',
+        'upstream.http.status.5xx': 'upstream_status',
+        'upstream.http.response.length': 'upstream_response_length',
+        # 'upstream.next.count': None,  # Not sure how best to handle this since this...ignoring for now.
+        'cache.bypass': 'upstream_cache_status',
+        'cache.expired': 'upstream_cache_status',
+        'cache.hit': 'upstream_cache_status',
+        'cache.miss': 'upstream_cache_status',
+        'cache.revalidated': 'upstream_cache_status',
+        'cache.stale': 'upstream_cache_status',
+        'cache.updating': 'upstream_cache_status',
+        # 'upstream.request.count': None  # Not sure how to handle for same reason above.
+    }
+
+    valid_http_methods = (
+        'head',
+        'get',
+        'post',
+        'put',
+        'delete',
+        'options'
     )
 
     def __init__(self, filename=None, log_format=None, tail=None, **kwargs):
@@ -30,6 +68,12 @@ class NginxAccessLogsCollector(AbstractCollector):
         self.filename = filename
         self.parser = NginxAccessLogParser(log_format)
         self.tail = tail if tail is not None else FileTail(filename)
+
+    def init_counters(self):
+        for counter, key in self.counters.iteritems():
+            # If keys are in the parser format (access log) or not defined (error log)
+            if key in self.parser.keys:
+                self.statsd.incr(counter, value=0)
 
     def collect(self):
         self.init_counters()  # set all counters to 0
@@ -79,14 +123,15 @@ class NginxAccessLogsCollector(AbstractCollector):
         nginx.http.method.head
         nginx.http.method.get
         nginx.http.method.post
-        nginx.http.method.inc
         nginx.http.method.put
-        nginx.http.method.del
+        nginx.http.method.delete
+        nginx.http.method.options
         nginx.http.method.other
         """
         if 'http_method' in data:
-            method = data['http_method']
-            metric_name = 'http.method.%s' % method.lower()
+            method = data['http_method'].lower()
+            method = method if method in self.valid_http_methods else 'other'
+            metric_name = 'http.method.%s' % method
             self.statsd.incr(metric_name)
 
     def http_status(self, data):
@@ -157,7 +202,6 @@ class NginxAccessLogsCollector(AbstractCollector):
         nginx.http.request.time.pctl95
         nginx.http.request.time.count
         """
-        # TODO: upstream matching
         if 'request_time' in data:
             self.statsd.timer('http.request.time', sum(data['request_time']))
 
@@ -192,10 +236,8 @@ class NginxAccessLogsCollector(AbstractCollector):
         nginx.upstream.http.status.3xx
         nginx.upstream.http.status.4xx
         nginx.upstream.http.status.5xx
-        nginx.upstream.http.status.discarded
         nginx.upstream.http.response.length
         """
-        # TODO: upstream matching
 
         # find out if we have info about upstreams
         empty_values = ('-', '')
@@ -212,9 +254,9 @@ class NginxAccessLogsCollector(AbstractCollector):
         upstream_response = False
         if 'upstream_status' in data:
             status = data['upstream_status']
-            suffix = 'discarded' if status in ('499', '444', '408') else '%sxx' % status[0]
-            upstream_response = True if suffix in ('2xx', '3xx') else False  # Set flag for upstream length processing
+            suffix = '%sxx' % status[0]
             metric_name = 'upstream.http.status.%s' % suffix
+            upstream_response = True if suffix in ('2xx', '3xx') else False  # Set flag for upstream length processing
             self.statsd.incr(metric_name)
 
         if upstream_response and 'upstream_response_length' in data:
@@ -243,7 +285,7 @@ class NginxAccessLogsCollector(AbstractCollector):
         # cache
         if 'upstream_cache_status' in data:
             cache_status = data['upstream_cache_status']
-            if cache_status != '-':
+            if not cache_status.startswith('-'):
                 metric_name = 'cache.%s' % cache_status.lower()
                 self.statsd.incr(metric_name)
 

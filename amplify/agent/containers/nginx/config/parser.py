@@ -9,9 +9,11 @@ from pyparsing import (
 )
 
 from amplify.agent.context import context
+from amplify.agent.util.escape import prep_raw
+
 
 __author__ = "Mike Belov"
-__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
+__copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
 __credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
@@ -22,7 +24,6 @@ tokens_cache = {}
 
 
 IGNORED_DIRECTIVES = [
-    'ssl_certificate',
     'ssl_certificate_key',
     'ssl_client_certificate',
     'ssl_password_file',
@@ -71,16 +72,18 @@ class NginxConfigParser(object):
     rewrite_key = Keyword("rewrite").setParseAction(set_line_number)
     perl_set_key = Keyword("perl_set").setParseAction(set_line_number)
     log_format_key = Keyword("log_format").setParseAction(set_line_number)
-    content_by_lua_key = Keyword("content_by_lua").setParseAction(set_line_number)
-    rewrite_by_lua_key = Keyword("rewrite_by_lua").setParseAction(set_line_number)
-    init_by_lua_key = Keyword("init_by_lua").setParseAction(set_line_number)
-    lua_package_path_key = Keyword("lua_package_path").setParseAction(set_line_number)
     alias_key = Keyword("alias").setParseAction(set_line_number)
     return_key = Keyword("return").setParseAction(set_line_number)
     error_page_key = Keyword("error_page").setParseAction(set_line_number)
     map_key = Keyword("map").setParseAction(set_line_number)
-    key = (~map_key & ~alias_key & ~perl_set_key & ~content_by_lua_key & ~if_key & ~set_key & ~rewrite_key) + \
-        Word(alphanums + '$_:%?"~<>\/-+.,*()[]"' + "'").setParseAction(set_line_number)
+    server_name_key = Keyword("server_name").setParseAction(set_line_number)
+    # lua keys
+    start_with_lua_key = Regex(r'lua_\S+').setParseAction(set_line_number)
+    contains_by_lua_key = Regex(r'\S+_by_lua\S*').setParseAction(set_line_number)
+    key = (
+        ~map_key & ~alias_key & ~perl_set_key &
+        ~if_key & ~set_key & ~rewrite_key & ~server_name_key
+    ) + Word(alphanums + '$_:%?"~<>\/-+.,*()[]"' + "'").setParseAction(set_line_number)
 
     # values
     value = Regex(r'[^{};]*"[^\";]+"[^{};]*|[^{};]*\'[^\';]+\'|[^{};]+(?!${.+})').setParseAction(set_line_number)
@@ -116,7 +119,7 @@ class NginxConfigParser(object):
     ).setParseAction(set_line_number)
 
     lua_content = (
-        (lua_package_path_key | init_by_lua_key | rewrite_by_lua_key | content_by_lua_key) + Optional(space) +
+        (start_with_lua_key | contains_by_lua_key) + Optional(space) +
         singleQuote + language_include_value + singleQuote + Optional(space) + semicolon
     ).setParseAction(set_line_number)
 
@@ -130,6 +133,10 @@ class NginxConfigParser(object):
 
     log_format = (
         log_format_key + Optional(space) + strict_value + Optional(space) + any_value + Optional(space) + semicolon
+    ).setParseAction(set_line_number)
+
+    server_name = (
+        server_name_key + space + any_value + Optional(space) + semicolon
     ).setParseAction(set_line_number)
 
     # script
@@ -163,7 +170,7 @@ class NginxConfigParser(object):
             ZeroOrMore(
                  Group(log_format) | Group(lua_content) | Group(perl_set) |
                  Group(set) | Group(rewrite) | Group(alias) | Group(return_) |
-                 Group(assignment) |
+                 Group(assignment) | Group(server_name) |
                  map_block | block
             ).setParseAction(set_line_number)
         ).setParseAction(set_line_number) +
@@ -177,37 +184,75 @@ class NginxConfigParser(object):
     ).ignore(pythonStyleComment)
 
     INCLUDE_RE = re.compile(r'[^#]*include\s+(?P<include_file>.*);')
+    SSL_CERTIFICATE_RE = re.compile(r'[^#]*ssl_certificate\s+(?P<cert_file>.*);')
 
     def __init__(self, filename='/etc/nginx/nginx.conf'):
         global tokens_cache
         tokens_cache = {}
 
         self.filename = filename
+        self.folder = '/'.join(self.filename.split('/')[:-1])  # stores path to folder with main config
         self.files = {}  # to prevent cycle files and line indexing
         self.broken_files = set()  # to prevent reloading broken files
         self.index = []  # stores index for all sections (points to file number and line number)
-        self.folder = '/'.join(self.filename.split('/')[:-1])  # stores path to folder with main config
+        self.ssl_certificates = []
         self.errors = []
         self.tree = {}
 
     def parse(self):
         self.tree = self.__logic_parse(self.__pyparse(self.filename))
 
-    def collect_all_files(self):
+    @staticmethod
+    def get_file_info(filename):
         """
-        Tries to collect all included files and to return them as dict with mtimes and sizes
+        Returns file size, mtime and permissions
+        :param filename: str filename
+        :return: int, int, str - size, mtime, permissions
+        """
+        size, mtime, permissions = 0, 0, '0000'
+
+        try:
+            size = os.path.getsize(filename)
+            mtime = int(os.path.getmtime(filename))
+            permissions = oct(os.stat(filename).st_mode & 0777)
+        except Exception, e:
+            exception_name = e.__class__.__name__
+            message = 'failed to stat %s due to: %s' % (filename, exception_name)
+            context.log.debug(message, exc_info=True)
+
+        return size, mtime, permissions
+
+    def resolve_local_path(self, path):
+        """
+        Resolves local path
+        :param path: str path
+        :return: absolute path
+        """
+        result = path.replace('"', '')
+        if not result.startswith('/'):
+            result = '%s/%s' % (self.folder, result)
+        return result
+
+    def collect_all_files(self, include_ssl_certs=False):
+        """
+        Tries to collect all included files and ssl certs and return
+        them as dict with mtimes, sizes and permissions.
+        Later this dict will be used to determine if a config was changed or not.
+
+        We don't use md5 or other hashes, because it takes time and we should be able
+        to run these checks every 20 seconds or so
+
+        :param include_ssl_certs: bool - include ssl certs  or not
         :return: {} of files
         """
-        all_files = {}
+        result = {}
 
+        # collect all files
         def lightweight_include_search(include_files):
             for filename in include_files:
-                if filename in all_files:
+                if filename in result:
                     continue
-
-                # set mtime
-                all_files[filename] = int(os.path.getmtime(filename))
-
+                result[filename] = None
                 try:
                     for line in open(filename):
                         if 'include' in line:
@@ -215,35 +260,43 @@ class NginxConfigParser(object):
                             if gre:
                                 new_includes = self.find_includes(gre.group('include_file'))
                                 lightweight_include_search(new_includes)
+                        elif include_ssl_certs and 'ssl_certificate' in line:
+                            gre = self.SSL_CERTIFICATE_RE.match(line)
+                            if gre:
+                                cert_filename = self.resolve_local_path(gre.group('cert_file'))
+                                result[cert_filename] = None
                 except Exception as e:
                     exception_name = e.__class__.__name__
-                    message = 'failed to load %s due to: %s' % (filename, exception_name)
+                    message = 'failed to read %s due to: %s' % (filename, exception_name)
                     context.log.debug(message, exc_info=True)
 
         lightweight_include_search(self.find_includes(self.filename))
-        return all_files
+
+        # get mtimes, sizes and permissions
+        for filename in result.iterkeys():
+            size, mtime, permissions = self.get_file_info(filename)
+            result[filename] = '%s_%s_%s' % (size, mtime, permissions)
+
+        return result
 
     def find_includes(self, path):
         """
         Takes include path and returns all included files
         :param path: str path
-        :return: [] of str filenames
+        :return: [] of str file names
         """
-
         # resolve local paths
-        path = path.replace('"', '')
-        if not path.startswith('/'):
-            path = '%s/%s' % (self.folder, path)
+        path = self.resolve_local_path(path)
 
         # load all files
-        filenames = []
+        result = []
         if '*' in path:
             for filename in glob.glob(path):
-                filenames.append(filename)
+                result.append(filename)
         else:
-            filenames.append(path)
+            result.append(path)
 
-        return filenames
+        return result
 
     def __pyparse(self, path):
         """
@@ -261,28 +314,29 @@ class NginxConfigParser(object):
                     'index': file_index,
                     'lines': 0,
                     'size': 0,
-                    'mtime': 0
+                    'mtime': 0,
+                    'permissions': ''
                 }
             else:
                 file_index = self.files[filename]['index']
 
             try:
-                size = os.path.getsize(filename)
-                mtime = int(os.path.getmtime(filename))
+                size, mtime, permissions = self.get_file_info(filename)
 
                 self.files[filename]['size'] = size
                 self.files[filename]['mtime'] = mtime
+                self.files[filename]['permissions'] = permissions
 
                 if size > self.max_size:
-                    self.errors.append('failed to load %s due to: too large %s bytes' % (filename, size))
+                    self.errors.append('failed to read %s due to: too large, %s bytes' % (filename, size))
                     continue
+
                 source = open(filename).read()
                 lines_count = source.count('\n')
-
                 self.files[filename]['lines'] = lines_count
             except Exception as e:
                 exception_name = e.__class__.__name__
-                message = 'failed to load %s due to: %s' % (filename, exception_name)
+                message = 'failed to read %s due to: %s' % (filename, exception_name)
                 self.errors.append(message)
                 self.broken_files.add(filename)
                 del self.files[filename]
@@ -393,7 +447,9 @@ class NginxConfigParser(object):
                             format_name, format_value = gwe.group(1), gwe.group(2)
 
                             indexed_value = self.__idx_save(format_value, file_index, row.line_number)
-                            indexed_value = (indexed_value[0].replace('\\t', '\t'), indexed_value[1])  # tab work around
+                            # Handle odd Python auto-escaping of raw strings when packing/unpacking.
+                            indexed_value = (prep_raw(indexed_value[0]), indexed_value[1])
+
                             if key in result:
                                 result[key][format_name] = indexed_value
                             else:
@@ -417,6 +473,18 @@ class NginxConfigParser(object):
                             continue  # skip directives that are use nginx variables and it's not if
 
                         # Otherwise handle normally (see ending else below).
+                        indexed_value = self.__idx_save(value, file_index, row.line_number)
+                        self.__simple_save(result, key, indexed_value)
+                    elif key == 'ssl_certificate':
+                        if value == '':
+                            continue  # skip empty values
+
+                        if '$' in value and ' if=$' not in value:
+                            continue  # skip directives that are use nginx variables and it's not if
+
+                        self.ssl_certificates.append(self.resolve_local_path(value))  # Add value to ssl_certificates
+
+                        # save config value
                         indexed_value = self.__idx_save(value, file_index, row.line_number)
                         self.__simple_save(result, key, indexed_value)
                     else:
@@ -493,4 +561,3 @@ class NginxConfigParser(object):
             return map(lambda x: self.simplify(tree=x), tree)
 
         return result
-

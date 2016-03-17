@@ -40,7 +40,7 @@ More details: https://urllib3.readthedocs.org/en/latest/security.html#pyopenssl
 
 
 __author__ = "Mike Belov"
-__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
+__copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
 __credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
@@ -52,7 +52,7 @@ class HTTPClient(Singleton):
     def __init__(self):
         config = context.app_config
         self.timeout = float(config['cloud']['api_timeout'])
-        self.verify_ssl = config['cloud']['verify_ssl']
+        self.verify_ssl_cert = config['cloud']['verify_ssl_cert']
         self.gzip = config['cloud']['gzip']
         self.session = None
         self.url = None
@@ -67,8 +67,8 @@ class HTTPClient(Singleton):
 
     def update_cloud_url(self):
         config = context.app_config
-        self.url = '%s/%s' % (config['cloud']['api_url'], config['credentials']['api_key'])
         content_type = 'binary/octet-stream' if self.gzip else 'application/json'
+        self.url = '%s/%s' % (config['cloud']['api_url'], config['credentials']['api_key'])
         self.session = requests.Session()
         self.session.headers.update({
             'Content-Type': content_type,
@@ -82,13 +82,13 @@ class HTTPClient(Singleton):
         payload = zlib.compress(payload, self.gzip) if self.gzip else payload
 
         start_time = time.time()
-        result, http_code = None, 200
+        result, http_code = '', 500
         try:
             if method == 'get':
                 r = self.session.get(
                     url,
                     timeout=timeout,
-                    verify=self.verify_ssl,
+                    verify=self.verify_ssl_cert,
                     proxies=self.proxies
                 )
             else:
@@ -96,26 +96,28 @@ class HTTPClient(Singleton):
                     url,
                     data=payload,
                     timeout=timeout,
-                    verify=self.verify_ssl,
+                    verify=self.verify_ssl_cert,
                     proxies=self.proxies
                 )
             http_code = r.status_code
             r.raise_for_status()
-            result = r.json() if json else r.text
+            try:
+                result = r.json() if json else r.text
+            except ValueError as e:
+                context.log.error('failed %s "%s", exception: "%s"' % (method.upper(), url, e.message))
+                context.log.debug('', exc_info=True)
             return result
         except Exception as e:
             if log:
-                context.default_log.error('failed to %s "%s", exception: "%s"' % (method, url, e.message))
-                context.default_log.debug('', exc_info=True)
-                result = {}
-                raise e
+                context.log.error('failed %s "%s", exception: "%s"' % (method.upper(), url, e.message))
+                context.log.debug('', exc_info=True)
         finally:
-            if log:
-                end_time = time.time()
-                context.default_log.debug(result)
-                context.default_log.info(
-                    "%s %s %s %s %s %.3f" % (method, url, http_code, len(payload), len(result), end_time - start_time)
-                )
+            end_time = time.time()
+            log_method = context.log.info if log else context.log.debug
+            context.log.debug(result)
+            log_method(
+                "%s %s %s %s %s %.3f" % (method, url, http_code, len(payload), len(result), end_time - start_time)
+            )
 
     def post(self, url, data=None, timeout=None, json=True):
         return self.make_request(url, 'post', data=data, timeout=timeout, json=json)

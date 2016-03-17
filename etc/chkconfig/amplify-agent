@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# chkconfig: - 50 50
+# chkconfig: 2345 50 50
 # description: NGINX Amplify Agent
 #
 # processname: /usr/bin/nginx-amplify-agent.py

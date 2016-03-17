@@ -17,7 +17,7 @@ from amplify.agent.configd import ConfigdClient
 from amplify.agent.util.threads import spawn
 
 __author__ = "Mike Belov"
-__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
+__copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
 __credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
@@ -141,8 +141,6 @@ class AbstractCollector(object):
     """
     short_name = None
 
-    counters = ()  # For sending 0 values
-
     def __init__(self, object=None, interval=None):
         self.object = object
         self.interval = interval
@@ -174,10 +172,6 @@ class AbstractCollector(object):
         except:
             context.log.error('%s failed' % self.object.id, exc_info=True)
             raise
-
-    def init_counters(self):
-        for counter in self.counters:
-            self.statsd.incr(counter, value=0)
 
     def _collect(self):
         m_size_b, m_rss_b = memusage.report()

@@ -5,7 +5,7 @@ from amplify.agent.containers.nginx.log.access import NginxAccessLogParser
 from test.base import BaseTestCase
 
 __author__ = "Mike Belov"
-__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
+__copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
 __credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
@@ -262,6 +262,24 @@ class LogParserTestCase(BaseTestCase):
             '"GET /img/_data/combined/j6vnc0.css HTTP/2.0"	"200"	"5909	"https://leete.ru/img/"' + \
             '	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_3) AppleWebKit/537.36 (KHTML, like Gecko) ' + \
             'Chrome/47.0.2526.111 Safari/537.36"	"-"'
+
+        parser = NginxAccessLogParser(user_format)
+        parsed = parser.parse(simple_line)
+
+        for key in expected_keys:
+            assert_that(parsed, has_item(key))
+
+    def test_json_config(self):
+        user_format = \
+            '{"time_local": "$time_local","browser": [{"modern_browser": "$modern_browser",' + \
+            '"ancient_browser": "$ancient_browser","msie": "$msie"}],"core": [{"args": "$args","uri": "$uri"}]}'
+
+        expected_keys = [
+            'time_local', 'modern_browser', 'ancient_browser', 'msie', 'args' ,'uri'
+        ]
+
+        simple_line = \
+            '{"time_local": "27/Jan/2016:12:30:04 -0800","browser": [{"modern_browser": "-","ancient_browser": "1","msie": "-"}],"core": [{"args": "-","uri": "/status"}]}'
 
         parser = NginxAccessLogParser(user_format)
         parsed = parser.parse(simple_line)

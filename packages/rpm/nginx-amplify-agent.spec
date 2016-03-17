@@ -136,11 +136,10 @@ fi
 
 
 %changelog
-* Thu Feb 11 2016 Mike Belov <dedm@nginx.com> 0.29-1
-- 0.29-1
+* Tue Mar 15 2016 Mike Belov <dedm@nginx.com> 0.30-1
+- 0.30-1
 - Bug fixes
-- NGINX+ status support improvements
-- New NGINX metrics
+- Initial SSL analytics support
 
 * Tue Jan 19 2016 Mike Belov <dedm@nginx.com> 0.28-1
 - 0.28-1

@@ -2,7 +2,7 @@
 #
 # NGINX Amplify Agent install script
 #
-# Copyright (C) 2015 Nginx, Inc.
+# Copyright (C) Nginx, Inc.
 #
 
 packages_url="http://packages.amplify.nginx.com"

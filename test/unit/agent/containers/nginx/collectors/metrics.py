@@ -7,7 +7,7 @@ from test.base import RealNginxTestCase, nginx_plus_test
 from amplify.agent.containers.nginx.container import NginxContainer
 
 __author__ = "Mike Belov"
-__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
+__copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
 __credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
@@ -53,6 +53,7 @@ class NginxMetricsTestCase(RealNginxTestCase):
 
     @nginx_plus_test
     def test_plus_status(self):
+        time.sleep(1)  # Give N+ some time to start
         container = NginxContainer()
         container.discover_objects()
         assert_that(container.objects, has_length(1))
@@ -90,6 +91,7 @@ class NginxMetricsTestCase(RealNginxTestCase):
         """
         Checks that if we can reach plus status then we don't use stub_status
         """
+        time.sleep(1)  # Give N+ some time to start
         container = NginxContainer()
         container.discover_objects()
         assert_that(container.objects, has_length(1))

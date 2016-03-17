@@ -7,7 +7,7 @@ from amplify.agent.containers.nginx.log.access import NginxAccessLogParser
 from amplify.agent.containers.nginx.collectors.accesslog import NginxAccessLogsCollector
 
 __author__ = "Mike Belov"
-__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
+__copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
 __credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
@@ -30,6 +30,22 @@ class LogsPerMethodTestCase(NginxCollectorTestCase):
         counters = metrics['counter']
         assert_that(counters, has_item('nginx.http.method.get'))
         assert_that(counters['nginx.http.method.get'][0][1], equal_to(1))
+
+    def test_non_standard_http_method(self):
+        line = '127.0.0.1 - - [02/Jul/2015:14:49:48 +0000] "PROPFIND /basic_status HTTP/1.1" 200 110 "-" ' + \
+               '"python-requests/2.2.1 CPython/2.7.6 Linux/3.13.0-48-generic"'
+
+        # run single method
+        collector = NginxAccessLogsCollector(object=self.fake_object, tail=[])
+        collector.http_method(NginxAccessLogParser().parse(line))
+
+        # check
+        metrics = self.fake_object.statsd.current
+        assert_that(metrics, has_item('counter'))
+        counters = metrics['counter']
+        assert_that(counters, has_item('nginx.http.method.other'))
+        assert_that(counters['nginx.http.method.other'][0][1], equal_to(1))
+
 
     def test_http_status(self):
         line = '127.0.0.1 - - [02/Jul/2015:14:49:48 +0000] "GET /basic_status HTTP/1.1" 200 110 "-" ' + \
@@ -81,11 +97,11 @@ class LogsPerMethodTestCase(NginxCollectorTestCase):
     def test_empty_upstreams(self):
         log_format = '$remote_addr - $remote_user [$time_local] ' + \
                      '"$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" ' + \
-                     'rt=$request_time ut="$upstream_response_time" cs=$upstream_cache_status'
+                     'rt=$request_time cs=$upstream_cache_status ut="$upstream_response_time"'
 
         line = \
             '1.2.3.4 - - [22/Jan/2010:19:34:21 +0300] "GET /foo/ HTTP/1.1" 200 11078 ' + \
-            '"http://www.rambler.ru/" "Mozilla/5.0 (Windows; U; Windows NT 5.1" rt=0.010 ut="-" cs=-'
+            '"http://www.rambler.ru/" "Mozilla/5.0 (Windows; U; Windows NT 5.1" rt=0.010 cs=- ut="-"'
 
         # run single method
         collector = NginxAccessLogsCollector(object=self.fake_object, tail=[])
@@ -241,42 +257,6 @@ class LogsPerMethodTestCase(NginxCollectorTestCase):
         assert_that(histogram, has_item('nginx.upstream.response.time'))
         assert_that(histogram['nginx.upstream.response.time'], equal_to([2.001 + 0.345]))
 
-    def test_upstream_status_discarded(self):
-        log_format = '$remote_addr - $remote_user [$time_local] ' + \
-                     '"$request" $status $body_bytes_sent "$http_referer" "$http_user_agent" ' + \
-                     'rt=$request_time ut="$upstream_response_time" cs=$upstream_cache_status ' + \
-                     'us=$upstream_status $upstream_response_length'
-
-        line = \
-            '1.2.3.4 - - [22/Jan/2010:19:34:21 +0300] "GET /foo/ HTTP/1.1" 200 11078 ' + \
-            '"http://www.rambler.ru/" "Mozilla/5.0 (Windows; U; Windows NT 5.1" rt=0.010 ut="2.001, 0.345" cs=MISS ' + \
-            'us=499 0'
-
-        # run single method
-        collector = NginxAccessLogsCollector(object=self.fake_object, tail=[])
-        collector.upstreams(NginxAccessLogParser(log_format).parse(line))
-
-        # check
-        metrics = self.fake_object.statsd.current
-        assert_that(metrics, has_item('counter'))
-        assert_that(metrics, has_item('timer'))
-
-        # counters
-        counters = metrics['counter']
-        assert_that(counters, has_item('nginx.upstream.request.count'))
-        assert_that(counters, has_item('nginx.upstream.next.count'))
-        assert_that(counters, has_item('nginx.cache.miss'))
-        assert_that(counters, has_item('nginx.upstream.http.status.discarded'))
-        assert_that(counters, not has_item('nginx.upstream.http.response.length'))
-        assert_that(counters['nginx.upstream.request.count'][0][1], equal_to(1))
-        assert_that(counters['nginx.upstream.next.count'][0][1], equal_to(1))
-        assert_that(counters['nginx.upstream.http.status.discarded'][0][1], equal_to(1))
-
-        # histogram
-        histogram = metrics['timer']
-        assert_that(histogram, has_item('nginx.upstream.response.time'))
-        assert_that(histogram['nginx.upstream.response.time'], equal_to([2.001 + 0.345]))
-
 
 class LogsOverallTestCase(NginxCollectorTestCase):
 
@@ -320,12 +300,20 @@ class LogsOverallTestCase(NginxCollectorTestCase):
         assert_that(counter['C|nginx.http.request.body_bytes_sent'][0][1], equal_to(84 + 2 + 1093 + 0))
 
         # check zero values
-        for counter_name in collector.counters:
-            assert_that(counter, has_key('C|nginx.%s' % counter_name))
-            if counter_name != 'http.status.2xx' and \
-                    counter_name != 'http.status.3xx' and \
-                    counter_name != 'http.status.4xx':
-                assert_that(counter['C|nginx.%s' % counter_name][0][1], equal_to(0))
+        for counter_name, counter_key in collector.counters.iteritems():
+            if counter_key in collector.parser.keys:
+                assert_that(counter, has_key('C|nginx.%s' % counter_name))
+                if counter_name not in (
+                    'http.status.2xx',
+                    'http.status.3xx',
+                    'http.status.4xx',
+                    'http.v1_1',
+                    'http.request.body_bytes_sent'
+                ):
+                    assert_that(counter['C|nginx.%s' % counter_name][0][1], equal_to(0))
+            else:
+                if counter_key not in collector.parser.request_variables:
+                    assert_that(counter, not_(has_key('C|nginx.%s' % counter_name)))
 
     def test_extended(self):
         log_format = '$remote_addr - $remote_user [$time_local] ' + \
@@ -372,11 +360,25 @@ class LogsOverallTestCase(NginxCollectorTestCase):
         assert_that(timer['G|nginx.upstream.response.time.max'][0][1], equal_to(2.001+0.345))
 
         # check zero values
-        for counter_name in collector.counters:
-            assert_that(counter, has_key('C|nginx.%s' % counter_name))
-            if counter_name != 'http.status.2xx' and \
-                    counter_name != 'http.status.3xx':
-                assert_that(counter['C|nginx.%s' % counter_name][0][1], equal_to(0))
+        for counter_name, counter_key in collector.counters.iteritems():
+            if counter_key in collector.parser.keys:
+                assert_that(counter, has_key('C|nginx.%s' % counter_name))
+                if counter_name not in (
+                    'http.status.2xx',
+                    'http.status.3xx',
+                    'http.method.get',
+                    'upstream.request.count',
+                    'upstream.next.count',
+                    'upstream.response.time.max',
+                    'http.v1_1',
+                    'cache.miss',
+                    'cache.hit',
+                    'http.request.body_bytes_sent'
+                ):
+                    assert_that(counter['C|nginx.%s' % counter_name][0][1], equal_to(0))
+            else:
+                if counter_key not in collector.parser.request_variables:
+                    assert_that(counter, not_(has_key('C|nginx.%s' % counter_name)))
 
     def test_extend_duplicates(self):
         """
@@ -426,11 +428,25 @@ class LogsOverallTestCase(NginxCollectorTestCase):
         assert_that(timer['G|nginx.upstream.response.time.max'][0][1], equal_to(2.001+0.345))
 
         # check zero values
-        for counter_name in collector.counters:
-            assert_that(counter, has_key('C|nginx.%s' % counter_name))
-            if counter_name != 'http.status.2xx' and \
-                    counter_name != 'http.status.3xx':
-                assert_that(counter['C|nginx.%s' % counter_name][0][1], equal_to(0))
+        for counter_name, counter_key in collector.counters.iteritems():
+            if counter_key in collector.parser.keys:
+                assert_that(counter, has_key('C|nginx.%s' % counter_name))
+                if counter_name not in (
+                    'http.status.2xx',
+                    'http.status.3xx',
+                    'http.method.get',
+                    'upstream.request.count',
+                    'upstream.next.count',
+                    'upstream.response.time.max',
+                    'http.v1_1',
+                    'cache.miss',
+                    'cache.hit',
+                    'http.request.body_bytes_sent'
+                ):
+                    assert_that(counter['C|nginx.%s' % counter_name][0][1], equal_to(0))
+            else:
+                if counter_key not in collector.parser.request_variables:
+                    assert_that(counter, not_(has_key('C|nginx.%s' % counter_name)))
 
     def test_extend_duplicates_reported(self):
         """
@@ -474,7 +490,19 @@ class LogsOverallTestCase(NginxCollectorTestCase):
         assert_that(counter['C|nginx.http.request.body_bytes_sent'][0][1], equal_to(41110))
 
         # check zero values
-        for counter_name in collector.counters:
-            assert_that(counter, has_key('C|nginx.%s' % counter_name))
-            if counter_name != 'http.status.2xx':
-                assert_that(counter['C|nginx.%s' % counter_name][0][1], equal_to(0))
+        for counter_name, counter_key in collector.counters.iteritems():
+            if counter_key in collector.parser.keys:
+                assert_that(counter, has_key('C|nginx.%s' % counter_name))
+                if counter_name not in (
+                    'http.status.2xx',
+                    'http.method.post',
+                    'http.method.get',
+                    'http.request.length',
+                    'http.request.body_bytes_sent',
+                    'http.v1_1',
+                    'http.v1_0'
+                ):
+                    assert_that(counter['C|nginx.%s' % counter_name][0][1], equal_to(0))
+            else:
+                if counter_key not in collector.parser.request_variables:
+                    assert_that(counter, not_(has_key('C|nginx.%s' % counter_name)))

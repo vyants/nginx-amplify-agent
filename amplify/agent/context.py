@@ -19,7 +19,7 @@ except ImportError:
 
 
 __author__ = "Mike Belov"
-__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
+__copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
 __credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
@@ -33,7 +33,7 @@ class Context(Singleton):
     def __init__(self):
         self.pid = os.getpid()
 
-        self.version = '0.29-1'  # Major.Minor-Build
+        self.version = '0.30-1'  # Major.Minor-Build
         self.environment = None
         self.http_client = None
         self.default_log = None

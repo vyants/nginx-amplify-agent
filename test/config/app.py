@@ -3,7 +3,7 @@ from test.fixtures.defaults import *
 from amplify.agent.config.app import Config
 
 __author__ = "Mike Belov"
-__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
+__copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
 __credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
@@ -15,6 +15,9 @@ class TestingConfig(Config):
     write_new = True
 
     config_changes = dict(
+        cloud=dict(
+            verify_ssl_cert=False,
+        ),
         credentials=dict(
             uuid=DEFAULT_UUID,
             api_key=DEFAULT_API_KEY,

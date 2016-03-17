@@ -8,8 +8,8 @@ from amplify.agent.context import context
 from amplify.agent.containers.nginx.config.config import NginxConfig
 
 __author__ = "Mike Belov"
-__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
-__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev"]
+__copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
+__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
 __email__ = "dedm@nginx.com"
@@ -23,6 +23,8 @@ proxy_buffers_simple_config = os.getcwd() + '/test/fixtures/nginx/proxy_buffers_
 proxy_buffers_complex_config = os.getcwd() + '/test/fixtures/nginx/proxy_buffers_complex/nginx.conf'
 tabs_config = os.getcwd() + '/test/fixtures/nginx/custom/tabs.conf'
 fastcgi_config = os.getcwd() + '/test/fixtures/nginx/fastcgi/nginx.conf'
+json_config = os.getcwd() + '/test/fixtures/nginx/custom/json.conf'
+ssl_simple_config = os.getcwd() + '/test/fixtures/nginx/ssl/simple/nginx.conf'
 
 
 class ConfigTestCase(BaseTestCase):
@@ -184,3 +186,44 @@ class ConfigTestCase(BaseTestCase):
         assert_that(location, has_key('fastcgi_pass'))
         assert_that(location, has_key('fastcgi_param'))
         assert_that(location['fastcgi_param'], has_length(17))
+
+    def test_json(self):
+        config = NginxConfig(json_config)
+        config.full_parse()
+
+        assert_that(config.log_formats, has_key('json'))
+        assert_that(
+            config.log_formats['json'],
+            equal_to('{ "time_iso8601": "$time_iso8601", "browser": [{"modern_browser": "$modern_browser", '
+                     '"ancient_browser": "$ancient_browser", "msie": "$msie"}], "core": [{"args": "$args", "arg": '
+                     '{ "arg_example": "$arg_example"}, "body_bytes_sent": "$body_bytes_sent", "bytes_sent": '
+                     '"$bytes_sent", "cookie": { "cookie_example": "$cookie_example" }, "connection": "$connection", '
+                     '"connection_requests": "$connection_requests", "content_length": "$content_length", '
+                     '"content_type": "$content_type", "document_root": "$document_root", "document_uri": '
+                     '"$document_uri","host": "$host", "hostname": "$hostname", "http": { "http_example": '
+                     '"$http_example" }, "https": "$https", "is_args": "$is_args", "limit_rate": "$limit_rate", '
+                     '"msec": "$msec", "nginx_version": "$nginx_version", "pid": "$pid", "pipe": "$pipe", '
+                     '"proxy_protocol_addr": "$proxy_protocol_addr", "query_string": "$query_string", "realpath_root": '
+                     '"$realpath_root", "remote_addr": "$remote_addr", "remote_port": "$remote_port", "remote_user": '
+                     '"$remote_user", "request": "$request", "request_body": "$request_body", "request_body_file": '
+                     '"$request_body_file", "request_completion": "$request_completion", "request_filename": '
+                     '"$request_filename", "request_length": "$request_length", "request_method": "$request_method", '
+                     '"request_time": "$request_time", "request_uri": "$request_uri", "scheme": "$scheme", '
+                     '"sent_http_": { "sent_http_example": "$sent_http_example" }, "server_addr": "$server_addr", '
+                     '"server_name": "$server_name", "server_port": "$server_port", "server_protocol": '
+                     '"$server_protocol", "status": "$status", "tcpinfo_rtt": "$tcpinfo_rtt", "tcpinfo_rttvar": '
+                     '"$tcpinfo_rttvar", "tcpinfo_snd_cwnd": "$tcpinfo_snd_cwnd", "tcpinfo_rcv_space": '
+                     '"$tcpinfo_rcv_space", "uri": "$uri" }]}')
+        )
+
+    def test_ssl(self):
+        config = NginxConfig(ssl_simple_config)
+        config.full_parse()
+        config.run_ssl_analysis()
+
+        ssl_certificates = config.ssl_certificates
+        assert_that(ssl_certificates, has_length(1))
+
+        # check contents
+        assert_that(ssl_certificates.keys()[0], ends_with('certs.d/example.com.crt'))
+        assert_that(ssl_certificates.values()[0], has_item('names'))

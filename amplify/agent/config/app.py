@@ -4,7 +4,7 @@ import os
 from amplify.agent.config.abstract import AbstractConfig
 
 __author__ = "Mike Belov"
-__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
+__copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
 __credits__ = ["Mike Belov"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
@@ -25,7 +25,7 @@ class Config(AbstractConfig):
             push_interval=20.0,
             api_url=None,
             api_timeout=5.0,
-            verify_ssl=False,
+            verify_ssl_cert=False,
             gzip=6,
         ),
         credentials=dict(
@@ -52,7 +52,7 @@ class DevelopmentConfig(Config):
                 os.environ.get('RECEIVER_PORT_5000_TCP_ADDR'),
                 os.environ.get('RECEIVER_PORT_5000_TCP_PORT')
             ),
-            verify_ssl=False
+            verify_ssl_cert=False
         ),
         credentials=dict(
             api_key='DEFAULT'
@@ -69,7 +69,7 @@ class SandboxConfig(Config):
     config_changes = dict(
         cloud=dict(
             api_url='http://localhost:5001/1.1',
-            verify_ssl=False
+            verify_ssl_cert=False
         ),
         credentials=dict(
             api_key='DEFAULT'

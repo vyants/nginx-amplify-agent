@@ -2,7 +2,7 @@
 import ConfigParser
 
 __author__ = "Mike Belov"
-__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
+__copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
 __credits__ = ["Mike Belov"]
 __license__ = ""
 __maintainer__ = "Mike Belov"

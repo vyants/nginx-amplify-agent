@@ -10,7 +10,7 @@ from amplify.agent.containers.abstract import AbstractCollector
 from amplify.agent.eventd import WARNING
 
 __author__ = "Mike Belov"
-__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
+__copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
 __credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
@@ -49,11 +49,12 @@ class NginxMetricsCollector(AbstractCollector):
                 method()
             except psutil.NoSuchProcess as e:
                 exception_name = e.__class__.__name__
+                pid = e.pid
 
                 # Log exception
                 context.log.warning(
-                    'failed to collect metrics %s due to %s, object restart needed' %
-                    (method.__name__, exception_name)
+                    'failed to collect metrics %s due to %s, object restart needed (PID: %s)' %
+                    (method.__name__, exception_name, pid)
                 )
                 self.object.need_restart = True
             except Exception as e:
@@ -219,10 +220,14 @@ class NginxMetricsCollector(AbstractCollector):
 
         # get stub status body
         try:
-            stub_body = context.http_client.get(self.object.stub_status_url, timeout=1, json=False)
+            stub_body = context.http_client.get(self.object.stub_status_url, timeout=1, json=False, log=False)
         except:
             context.log.error('failed to check stub_status url %s' % self.object.stub_status_url)
             context.log.debug('additional info', exc_info=True)
+
+        if not stub_body:
+            context.log.error('failed to check stub_status url %s' % self.object.stub_status_url)
+            return
 
         # parse body
         try:
@@ -279,10 +284,14 @@ class NginxMetricsCollector(AbstractCollector):
 
         # get plus status body
         try:
-            status = context.http_client.get(self.object.plus_status_internal_url, timeout=1)
+            status = context.http_client.get(self.object.plus_status_internal_url, timeout=1, log=False)
         except:
             context.log.error('failed to check plus_status url %s' % self.object.plus_status_internal_url)
             context.log.debug('additional info', exc_info=True)
+
+        if not status:
+            context.log.error('failed to check plus_status url %s' % self.object.plus_status_internal_url)
+            return
 
         connections = status.get('connections', {})
         requests = status.get('requests', {})

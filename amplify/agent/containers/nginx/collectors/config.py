@@ -7,7 +7,7 @@ from amplify.agent.containers.abstract import AbstractCollector
 from amplify.agent.eventd import CRITICAL, WARNING, INFO
 
 __author__ = "Mike Belov"
-__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
+__copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
 __credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
@@ -18,7 +18,7 @@ class NginxConfigCollector(AbstractCollector):
 
     short_name = 'nginx_config'
 
-    def __init__(self, upload_config=False, run_config_test=False, **kwargs):
+    def __init__(self, **kwargs):
         super(NginxConfigCollector, self).__init__(**kwargs)
 
         self.previous_files = {}
@@ -32,8 +32,8 @@ class NginxConfigCollector(AbstractCollector):
                 prefix=self.object.prefix
             )
 
-            # check if config is changed (changes are: new files, new mtimes)
-            all_config_files = config.get_all_files()
+            # check if config is changed (changes are: new files/certs, new mtimes)
+            all_config_files = config.get_all_files(include_ssl_certs=self.object.upload_ssl)
             if all_config_files == self.previous_files:
                 return
 
@@ -49,6 +49,12 @@ class NginxConfigCollector(AbstractCollector):
             for error in config.parser_errors:
                 self.eventd.event(level=WARNING, message=error)
 
+            # run ssl checks
+            if self.object.upload_ssl:
+                config.run_ssl_analysis()
+            else:
+                context.log.info('ssl analysis skipped due to object settings')
+
             # run upload
             checksum = config.checksum()
             if self.object.upload_config:
@@ -60,10 +66,10 @@ class NginxConfigCollector(AbstractCollector):
             # otherwise run test
             else:
                 # run test
-                if self.object.run_config_test and config.total_size() < 10*1024*1024:  # 10 MB
+                if self.object.run_config_test and config.total_size() < 20*1024*1024:  # 20 MB
                     run_time = config.run_test()
 
-                    # Send event for testing nginx config.
+                    # send event for testing nginx config
                     if config.test_errors:
                         self.eventd.event(level=WARNING, message='nginx config test failed')
                     else:
@@ -72,6 +78,7 @@ class NginxConfigCollector(AbstractCollector):
                     for error in config.test_errors:
                         self.eventd.event(level=CRITICAL, message=error)
 
+                    # stop -t if it took too long
                     if run_time > context.app_config['containers']['nginx']['max_test_duration']:
                         context.app_config['containers']['nginx']['run_test'] = False
                         context.app_config.mark_unchangeable('run_test')
@@ -102,6 +109,10 @@ class NginxConfigCollector(AbstractCollector):
             'index': config.index,
             'tree': config.tree,
             'files': config.files,
-            'errors': {'parser': len(config.parser_errors), 'test': len(config.test_errors)}
+            'ssl_certificates': config.ssl_certificates,
+            'errors': {
+                'parser': len(config.parser_errors),
+                'test': len(config.test_errors)
+            }
         }
         self.configd.config(payload=payload, checksum=checksum)

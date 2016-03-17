@@ -5,11 +5,12 @@ from hamcrest import *
 
 from test.base import BaseTestCase
 from amplify.agent.containers.nginx.config.parser import NginxConfigParser, IGNORED_DIRECTIVES
+from amplify.agent.context import context
 
 
 __author__ = "Mike Belov"
-__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
-__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev"]
+__copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
+__credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
 __email__ = "dedm@nginx.com"
@@ -21,10 +22,13 @@ huge_config = os.getcwd() + '/test/fixtures/nginx/huge/nginx.conf'
 broken_config = os.getcwd() + '/test/fixtures/nginx/broken/nginx.conf'
 rewrites_config = os.getcwd() + '/test/fixtures/nginx/rewrites/nginx.conf'
 map_lua_perl = os.getcwd() + '/test/fixtures/nginx/map_lua_perl/nginx.conf'
-ssl_config = os.getcwd() + '/test/fixtures/nginx/ssl/nginx.conf'
+ssl_broken_config = os.getcwd() + '/test/fixtures/nginx/ssl/broken/nginx.conf'
 bad_log_directives_config = os.getcwd() + '/test/fixtures/nginx/broken/bad_logs.conf'
 includes_config = os.getcwd() + '/test/fixtures/nginx/includes/nginx.conf'
-windows_config = os.getcwd() +'/test/fixtures/nginx/windows/nginx.conf'
+windows_config = os.getcwd() + '/test/fixtures/nginx/windows/nginx.conf'
+tab_config = os.getcwd() + '/test/fixtures/nginx/custom/tabs.conf'
+json_config = os.getcwd() + '/test/fixtures/nginx/custom/json.conf'
+ssl_simple_config = os.getcwd() + '/test/fixtures/nginx/ssl/simple/nginx.conf'
 
 
 class ParserTestCase(BaseTestCase):
@@ -52,6 +56,10 @@ class ParserTestCase(BaseTestCase):
         server = http['server'][1]
         assert_that(server, has_key('listen'))
         assert_that(server, has_key('location'))
+        assert_that(server, has_key('server_name'))
+        assert_that(
+            server['server_name'], equal_to('127.0.0.1 "~^([a-z]{2})?\.?test\.nginx\.org" "~^([a-z]{2})?\.?beta\.nginx\.org"')
+        )
         assert_that(server['location'], is_(instance_of(dict)))
 
         # location
@@ -185,7 +193,7 @@ class ParserTestCase(BaseTestCase):
         """
         This test case specifically checks to see that none of the excluded directives (SSL focused) are parsed.
         """
-        cfg = NginxConfigParser(ssl_config)
+        cfg = NginxConfigParser(ssl_broken_config)
 
         cfg.parse()
         tree = cfg.simplify()
@@ -195,6 +203,8 @@ class ParserTestCase(BaseTestCase):
         # ssl
         for directive in IGNORED_DIRECTIVES:
             assert_that(tree['server'][1], is_not(has_item(directive)))
+        assert_that(tree['server'][1], has_item('ssl_certificate'))
+        assert_that(tree['server'][1]['ssl_certificate'], equal_to('certs.d/example.cert'))
 
     def test_parse_bad_access_and_error_log(self):
         """
@@ -249,3 +259,48 @@ class ParserTestCase(BaseTestCase):
                 ' text/x-cross-domain-policy'
             )
         )
+
+    def test_parse_tabs(self):
+        """
+        Test tab config format.  This is the first test investigating Parser auto-escape problems.
+        """
+        cfg = NginxConfigParser(tab_config)
+
+        cfg.parse()
+        tree = cfg.simplify()
+
+        for log_format in tree['http']['log_format'].itervalues():
+            assert_that(log_format.find('\\'), equal_to(-1))
+
+    def test_parse_json(self):
+        """
+        Test json config format.  This is the first test investigating Parser auto-escape problems.
+        """
+        cfg = NginxConfigParser(json_config)
+
+        cfg.parse()
+        tree = cfg.simplify()
+
+        for log_format in tree['http']['log_format'].itervalues():
+            assert_that(log_format.find('\\'), equal_to(-1))
+
+    def test_parse_ssl_simple_config(self):
+        cfg = NginxConfigParser(ssl_simple_config)
+
+        cfg.parse()
+        tree = cfg.simplify()
+
+        assert_that(tree, has_key('http'))
+        http = tree['http']
+
+        assert_that(http, has_key('server'))
+        server = http['server']
+
+        # ssl
+        for directive in IGNORED_DIRECTIVES:
+            assert_that(server[2], is_not(has_item(directive)))
+        assert_that(server[2], has_item('ssl_certificate'))
+        assert_that(server[2]['ssl_certificate'], equal_to('certs.d/example.com.crt'))
+
+        ssl_certificates = cfg.ssl_certificates
+        assert_that(len(ssl_certificates), equal_to(1))

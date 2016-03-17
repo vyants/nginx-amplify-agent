@@ -39,7 +39,7 @@ RUN easy_install pip
 ADD . /amplify
 
 # Get pip to download and install requirements:
-RUN pip install gevent netifaces pytest pytest-xdist pyhamcrest ujson psutil requests netaddr pyparsing setproctitle
+RUN pip install gevent netifaces pytest pytest-xdist pyhamcrest ujson psutil==3.2.2 requests netaddr pyparsing setproctitle
 
 ENV AMPLIFY_ENVIRONMENT testing
 ENV PYTHONPATH /amplify
@@ -50,6 +50,11 @@ WORKDIR /amplify
 # add config
 ADD nginx.conf /etc/nginx/nginx.conf
 ADD nginx2.conf /etc/nginx/nginx2.conf
+ADD nginx_bad_status.conf /etc/nginx/nginx_bad_status.conf
+
+# add ssl
+ADD amplify-agent-test.crt /etc/nginx/certs.d/amplify-agent-test.crt
+ADD amplify-agent-test.key /etc/nginx/certs.d/amplify-agent-test.key
 
 # cp nginx
 RUN cp /usr/sbin/nginx /usr/sbin/nginx2

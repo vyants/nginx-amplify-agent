@@ -25,7 +25,7 @@ RUN easy_install pip
 ADD . /amplify
 
 # Get pip to download and install requirements:
-RUN pip install lockfile gevent netifaces pytest-xdist ujson psutil requests netaddr pyparsing setproctitle python-daemon
+RUN pip install lockfile gevent netifaces pytest-xdist ujson psutil==3.2.2 requests netaddr pyparsing setproctitle python-daemon
 
 ENV AMPLIFY_ENVIRONMENT development
 ENV PYTHONPATH /amplify/
@@ -35,5 +35,9 @@ WORKDIR /amplify
 
 # add stub status
 ADD nginx.conf /etc/nginx/nginx.conf
+
+# add ssl
+ADD amplify-agent-test.crt /etc/nginx/certs.d/amplify-agent-test.crt
+ADD amplify-agent-test.key /etc/nginx/certs.d/amplify-agent-test.key
 
 CMD nginx && python /amplify/nginx-amplify-agent.py start --config=/amplify/etc/agent.conf.development && tail -f /amplify/log/agent.log

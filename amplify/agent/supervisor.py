@@ -14,7 +14,7 @@ from amplify.agent.containers.abstract import definition_id
 from amplify.agent.errors import AmplifyCriticalException
 
 __author__ = "Mike Belov"
-__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
+__copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
 __credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
@@ -129,9 +129,24 @@ class Supervisor(Singleton):
         # talk to cloud
         try:
             cloud_response = context.http_client.post('agent/', data=top_object)
+            cloud_versions = cloud_response.pop('versions')
         except:
             context.log.error('could not connect to cloud', exc_info=True)
             raise AmplifyCriticalException()
+
+        # check agent version status
+        agent_version = float(context.version.split('-')[0])
+        if agent_version <= float(cloud_versions['obsolete']):
+            context.log.error(
+                'agent is obsolete - cloud will refuse updates until it is updated (version: %s, current: %s)' %
+                (agent_version, cloud_versions['current'])
+            )
+            self.stop()
+        elif agent_version <= float(cloud_versions['old']):
+            context.log.warn(
+                'agent is old - update is recommended (version: %s, current: %s)' %
+                (agent_version, cloud_versions['current'])
+            )
 
         # update special object configs
         changed_containers = []

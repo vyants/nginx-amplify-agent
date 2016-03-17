@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 import re
 
+from amplify.agent.util.escape import prep_raw
+
+
 __author__ = "Mike Belov"
-__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
+__copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
 __credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
 __email__ = "dedm@nginx.com"
+
 
 REQUEST_RE = re.compile(r'(?P<http_method>[A-Z]+) (?P<request_uri>/.*) HTTP/(?P<http_version>[\d\.]+)')
 
@@ -62,6 +66,8 @@ class NginxAccessLogParser(object):
         self.regex = None
         current_key = None
 
+        self.raw_format = prep_raw(self.raw_format)
+
         def finalize_key():
             key_without_dollar = current_key[1:]
             self.keys.append(key_without_dollar)
@@ -90,7 +96,7 @@ class NginxAccessLogParser(object):
                     else:
                         # otherwise - add char to regex
                         current_key = None
-                        if char.isalpha():
+                        if char.isalpha() or char.isdigit():
                             self.regex_string += char
                         else:
                             self.regex_string += '\%s' % char
@@ -99,7 +105,7 @@ class NginxAccessLogParser(object):
                 if char == '$':
                     current_key = char
                 else:
-                    if char.isalpha():
+                    if char.isalpha() or char.isdigit():
                         self.regex_string += char
                     else:
                         self.regex_string += '\%s' % char
@@ -148,7 +154,7 @@ class NginxAccessLogParser(object):
                 else:
                     result[key] = value
 
-        # parse subfields
+        # parse sub fields
         if 'request' in result:
             req = REQUEST_RE.match(result['request'])
             if req:

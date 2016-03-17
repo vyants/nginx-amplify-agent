@@ -8,10 +8,11 @@ import hashlib
 from amplify.agent.containers.nginx.config.parser import NginxConfigParser
 from amplify.agent.util import subp
 from amplify.agent.context import context
+from amplify.agent.util.ssl import ssl_analysis
 
 
 __author__ = "Mike Belov"
-__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
+__copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
 __credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
@@ -56,6 +57,7 @@ class NginxConfig(object):
         self.tree = {}
         self.files = {}
         self.index = []
+        self.ssl_certificates = {}
         self.parser_errors = []
         self.parser = NginxConfigParser(filename)
 
@@ -76,14 +78,15 @@ class NginxConfig(object):
         # try to locate and use default logs (PREFIX/logs/*)
         self.add_default_logs()
 
-    def get_all_files(self):
+    def get_all_files(self, include_ssl_certs=False):
         """
         Goes through all files (light-parsed includes) and collects their mtime
+        :param include_ssl_certs: bool - include ssl certs  or not
         :return: {} - dict of files
         """
-        result = self.parser.collect_all_files()
-        context.log.debug('collected %s files' % len(result.keys()))
-        return result
+        files = self.parser.collect_all_files(include_ssl_certs=include_ssl_certs)
+        context.log.debug('found %s files for %s' % (len(files.keys()), self.filename))
+        return files
 
     def total_size(self):
         """
@@ -246,14 +249,15 @@ class NginxConfig(object):
 
     def checksum(self):
         """
-        Calculates total checksum of all config/files files
+        Calculates total checksum of all config files, certificates and permissions
 
-        :param config: NginxConfig object
         :return: str checksum
         """
         checksums = []
-        for filename, filedata in self.files.iteritems():
+        for filename in self.files.iterkeys():
             checksums.append(hashlib.sha256(open(filename).read()).hexdigest())
+        for cert in self.ssl_certificates.iterkeys():
+            checksums.append(hashlib.sha256(open(cert).read()).hexdigest())
         return hashlib.sha256('.'.join(checksums)).hexdigest()
 
     def __parse_listen(self, listen):
@@ -302,3 +306,24 @@ class NginxConfig(object):
         error_log_path = '%s/logs/error.log' % self.prefix
         if os.path.isfile(error_log_path) and error_log_path not in self.error_logs:
             self.error_logs[error_log_path] = 'error'
+
+    def run_ssl_analysis(self):
+        """
+        Iterate over a list of ssl_certificate definitions and run ssl_analysis to construct a dictionary with
+        ssl_certificate value paired with results fo ssl_analysis.
+
+        :return: Dict
+        """
+        if not self.parser.ssl_certificates:
+            return
+
+        start_time = time.time()
+
+        for cert_filename in set(self.parser.ssl_certificates):
+            if cert_filename not in self.ssl_certificates:
+                ssl_analysis_result = ssl_analysis(cert_filename)
+                if ssl_analysis_result:
+                    self.ssl_certificates[cert_filename] = ssl_analysis_result
+
+        end_time = time.time()
+        return end_time - start_time

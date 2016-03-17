@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from gevent import monkey
-monkey.patch_all(socket=False, subprocess=True)
+monkey.patch_all(socket=False, subprocess=True, ssl=False)
 
 import os
 import imp
@@ -18,7 +18,7 @@ from amplify.agent.context import context
 from amplify.agent.containers.abstract import AbstractObject
 
 __author__ = "Mike Belov"
-__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
+__copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
 __credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
@@ -120,9 +120,12 @@ class RealNginxTestCase(BaseTestCase):
     def reload_nginx(self):
         subp.call('service nginx reload')
 
-    def start_second_nginx(self):
-        subp.call('/usr/sbin/nginx2 -c /etc/nginx/nginx2.conf')
+    def start_second_nginx(self, conf='nginx2.conf'):
+        subp.call('/usr/sbin/nginx2 -c /etc/nginx/%s' % conf)
         self.second_started = True
+
+    def stop_first_nginx(self):
+        subp.call('service nginx stop')
 
     def restart_nginx(self):
         subp.call('service nginx restart')

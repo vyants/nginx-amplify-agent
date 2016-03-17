@@ -7,7 +7,7 @@ from amplify.agent.containers.nginx.config.config import ERROR_LOG_LEVELS
 
 
 __author__ = "Mike Belov"
-__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
+__copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
 __credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
@@ -20,19 +20,9 @@ class NginxErrorLogsCollector(AbstractCollector):
 
     counters = (
         'http.request.buffered',
-        #'http.request.malformed',
-        #'http.request.failed',
-        #'http.response.failed',
         'upstream.response.buffered',
         'upstream.request.failed',
         'upstream.response.failed',
-        #'http.ssl_handshake.failed',
-        #'upstream.fastcgi.errors',
-        #'http.request.limited',
-        #'cache.fs.errors',
-        #'cache.lock.timeouts',
-        #'upstream.health_check.failed',
-        #'workers.warn.low_conn'
     )
 
     def __init__(self, filename=None, level=None, log_format=None, tail=None, **kwargs):
@@ -42,7 +32,12 @@ class NginxErrorLogsCollector(AbstractCollector):
         self.parser = NginxErrorLogParser()
         self.tail = tail if tail is not None else FileTail(filename)
 
+    def init_counters(self):
+        for counter in self.counters:
+            self.statsd.incr(counter, value=0)
+
     def collect(self):
+        # If log_level is <= warn (e.g. debug, info, notice, warn)
         if ERROR_LOG_LEVELS.index(self.level) <= 3:
             self.init_counters()  # set all error counters to 0
 

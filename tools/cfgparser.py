@@ -18,7 +18,7 @@ from amplify.agent.containers.nginx.config.config import NginxConfig
 
 
 __author__ = "Mike Belov"
-__copyright__ = "Copyright (C) 2015, Nginx Inc. All rights reserved."
+__copyright__ = "Copyright (C) Nginx, Inc. All rights reserved."
 __credits__ = ["Mike Belov", "Andrei Belov", "Ivan Poluyanov", "Oleg Mamontov", "Andrew Alexeev", "Grant Hulegaard"]
 __license__ = ""
 __maintainer__ = "Mike Belov"
@@ -83,8 +83,9 @@ if __name__ == '__main__':
         print(json.dumps(cfg.files, **print_args))
 
         print('\n\033[32mStub/plus status %s\033[0m' % filename)
-        print(json.dumps(cfg.stub_status, **print_args))
-        print(json.dumps(cfg.plus_status, **print_args))
+        print(json.dumps(cfg.stub_status_urls, **print_args))
+        print(json.dumps(cfg.plus_status_external_urls, **print_args))
+        print(json.dumps(cfg.plus_status_internal_urls, **print_args))
 
         print('\n\033[32mAccess logs %s\033[0m' % filename)
         print(json.dumps(cfg.access_logs, **print_args))
