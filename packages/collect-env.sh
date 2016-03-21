@@ -3,15 +3,10 @@
 # This script collects various configuration information about
 # the OS, the nginx, and the Amplify agent environments.
 #
-
-# TODO
 #
-# - ls /etc/nginx
-# - ls /var/log/nginx
-# - mount | egrep 'proc|sysfs'
-# - grep stub_status /etc/nginx/*
-# - cat /etc/resolv.conf
-# - cat /etc/selinux/config (CentOS)
+# TODO
+# --
+#
 
 agent_conf_path="/etc/amplify-agent"
 agent_conf_file="${agent_conf_path}/agent.conf"
@@ -39,16 +34,16 @@ if [ -n "${nginx_master}" ]; then
 	if [ -n "${nginx_bin}" ]; then
 	    echo " ---> started from binary: ${nginx_bin}"
 	    test -f "${nginx_bin}" && \
-	    echo "`ls -la ${nginx_bin}`"
+	    ls -la ${nginx_bin}
 
 	    if [ -n "${nginx_conf_option}" ]; then
 		echo " ---> started with config file: ${nginx_conf_option}"
-		echo "`ls -la ${nginx_conf_option}`"
+		ls -la ${nginx_conf_option}
 	    fi
 
 	    test -f "${nginx_bin}" && \
 	    echo " ---> version and configure options:" && \
-	    echo "`${nginx_bin} -V 2>&1`"
+	    ${nginx_bin} -V 2>&1
 	fi
 
 	echo ""
@@ -60,14 +55,33 @@ fi
 
 if id nginx > /dev/null 2>&1; then
     echo "===> found nginx user:"
-    echo "`id nginx`"
+    id nginx
     echo ""
     found_nginx_user="yes"
 fi
 
+if [ -e /etc/nginx ]; then
+    echo "===> contents of /etc/nginx:"
+    ls -la /etc/nginx
+    echo ""
+
+    if grep -R "stub_status" /etc/nginx/* > /dev/null 2>&1; then
+        echo "===> found stub_status somewhere inside /etc/nginx/*"
+        grep -R "stub_status" /etc/nginx/*
+        echo ""
+    fi
+fi
+
+if [ -e /var/log/nginx ]; then
+    echo "===> contents of /var/log/nginx:"
+    ls -la /var/log/nginx
+    echo ""
+fi
+
+
 if [ -f "${agent_conf_file}" ]; then
     echo "===> found agent.conf file:"
-    echo "`ls -la ${agent_conf_file}`"
+    ls -la ${agent_conf_file}
     echo ""
     found_agent_conf="yes"
 fi
@@ -128,7 +142,7 @@ if command -V lsb_release > /dev/null 2>&1; then
     os=`lsb_release -is | tr '[:upper:]' '[:lower:]'`
     codename=`lsb_release -cs | tr '[:upper:]' '[:lower:]'`
     release=`lsb_release -rs | sed 's/\..*$//'`
-    
+
     found_lsb_release="yes"
 
     if [ "$os" = "redhatenterpriseserver" -o "$os" = "oracleserver" ]; then
@@ -212,9 +226,9 @@ fi
 
 if [ -n "${found_lsb_release}" ]; then
     echo "===> lsb_release:"
-    echo "`lsb_release -is`"
-    echo "`lsb_release -cs`"
-    echo "`lsb_release -rs`"
+    lsb_release -is
+    lsb_release -cs
+    lsb_release -rs
     echo ""
 fi
 
@@ -249,17 +263,34 @@ esac
 if [ -n "${pkg_cmd}" ]; then
     echo "===> ${pkg_cmd}"
     echo " ---> checking package nginx-amplify-agent"
-    echo "`${pkg_cmd} nginx-amplify-agent`"
+    ${pkg_cmd} nginx-amplify-agent
     echo ""
     echo " ---> checking package nginx"
-    echo "`${pkg_cmd} nginx`"
+    ${pkg_cmd} nginx
     echo ""
 fi
 
 if cat /proc/1/cgroup | grep -v '.*/$' > /dev/null 2>&1; then
     echo "===> looks like this is container, not a host system"
-    echo "`cat /proc/1/cgroup | grep -v '.*/$'`"
+    cat /proc/1/cgroup | grep -v '.*/$'
     echo ""
+fi
+
+if ! mount | egrep 'proc|sysfs' > /dev/null 2>&1; then
+    echo "===> can find procfs or sysfs mounts"
+    mount | egrep 'proc|sysfs'
+    echo ""
+fi
+
+if [ -f /etc/resolv.conf ]; then
+    echo "===> /etc/resolf.conf is:"
+    cat /etc/resolv.conf
+    echo ""
+fi
+
+if [ "${os}" = "centos" -a -f /etc/selinux/config ]; then
+    echo "===> /etc/selinux/config is:"
+    cat /etc/selinux/config
 fi
 
 echo "===> environment variables:"
