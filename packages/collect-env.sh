@@ -250,10 +250,10 @@ echo ""
 pkg_cmd=""
 
 case "${os}" in
-    centos|rhel)
+    centos|rhel|amzn)
 	pkg_cmd="rpm -qi"
 	;;
-    ubuntu)
+    ubuntu|debian)
 	pkg_cmd="dpkg -s"
 	;;
     *)
@@ -263,10 +263,10 @@ esac
 if [ -n "${pkg_cmd}" ]; then
     echo "===> ${pkg_cmd}"
     echo " ---> checking package nginx-amplify-agent"
-    ${pkg_cmd} nginx-amplify-agent
+    ${pkg_cmd} nginx-amplify-agent 2>&1
     echo ""
     echo " ---> checking package nginx"
-    ${pkg_cmd} nginx
+    ${pkg_cmd} nginx 2>&1
     echo ""
 fi
 
