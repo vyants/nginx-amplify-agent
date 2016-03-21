@@ -202,10 +202,10 @@ add_repo_rpm () {
 }
 
 # Install package (either deb or rpm)
-install_deb_rpm() {
+install_deb_or_rpm() {
     # Update repo
     printf "\033[32m ${step}. Updating repository ...\n\n\033[0m"
-    
+
     test -n "$update_cmd" && \
     ${sudo_cmd} ${update_cmd}
 
@@ -233,10 +233,21 @@ install_deb_rpm() {
     fi
 }
 
-
 #
 # Main
 #
+
+assume_yes=""
+
+for arg in "$@"; do
+    case "$arg" in
+    	-y)
+	    assume_yes="-y"
+	    ;;
+	*)
+	    ;;
+    esac
+done
 
 step=1
 
@@ -290,7 +301,7 @@ if [ "$python_exists" = "no" ]; then
     exit 1
 fi
 
-if [ "$python_27" = "no" -a $python_26 = "no" ]; then
+if [ "$python_27" = "no" -a "$python_26" = "no" ]; then
     printf "\033[31m python is too old, require version >= 2.6.\033[0m\n\n"
     exit 1
 fi
@@ -309,7 +320,7 @@ get_os_name
 # Add public key, create repo config, install package
 case "$os" in
     ubuntu|debian)
-	printf "\033[32m ${os} detected.\033[0m\n"		
+	printf "\033[32m ${os} detected.\033[0m\n"
 
 	step=`expr $step + 1`
 
@@ -324,10 +335,10 @@ case "$os" in
 	step=`expr $step + 1`
 
 	# Install package
-	update_cmd="apt-get update"
-	install_cmd="apt-get install"
+	update_cmd="apt-get ${assume_yes} update"
+	install_cmd="apt-get ${assume_yes} install"
 
-	install_deb_rpm
+	install_deb_or_rpm
 	;;
     centos|amzn)
 	printf "\033[32m ${centos_flavor} detected.\033[0m\n"
@@ -336,7 +347,7 @@ case "$os" in
 
 	# Add public key
 	add_public_key_rpm
-		
+
 	step=`expr $step + 1`
 
 	# Add repository configuration
@@ -345,12 +356,12 @@ case "$os" in
 	step=`expr $step + 1`
 
 	# Install package
-	update_cmd="yum makecache"
-	install_cmd="yum install"
+	update_cmd="yum ${assume_yes} makecache"
+	install_cmd="yum ${assume_yes} install"
 
-	install_deb_rpm
+	install_deb_or_rpm
 	;;
-   *)
+    *)
 	if [ -n "$os" ] && [ "$os" != "linux" ]; then
 	    printf "\033[31m $os is currently unsupported, apologies!\033[0m\n\n"
 	else
