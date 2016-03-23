@@ -31,12 +31,13 @@ user=nginx
 
 if [ -f "$conffile" ]; then
     config_amplify_user=`grep -v '#' ${conffile} | \
-                         grep -A 5 -i '\[.*nginx.*\]' | \
+                         grep -A 10 -i '\[.*nginx.*\]' | \
                          grep -i 'user.*=' | \
                          awk -F= '{print $2}' | \
                          sed 's/ //g' | \
                          head -1`
-    nginxconf=`grep -A 5 -i '\[.*nginx.*\]' ${conffile} | \
+    nginxconf=`grep -v '#' ${conffile} | \
+	       grep -A 10 -i '\[.*nginx.*\]' | \
                grep -i 'configfile.*=' | \
                awk -F= '{print $2}' | \
                sed 's/ //g' | \

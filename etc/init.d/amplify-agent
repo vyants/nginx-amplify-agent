@@ -19,12 +19,13 @@ USER=nginx
 
 if [ -f "$CONFFILE" ]; then
     CONFIG_AMPLIFY_USER=`grep -v '#' ${CONFFILE} | \
-                         grep -A 5 -i '\[.*nginx.*\]' | \
+                         grep -A 10 -i '\[.*nginx.*\]' | \
                          grep -i 'user.*=' | \
                          awk -F= '{print $2}' | \
                          sed 's/ //g' | \
                          head -1`
-    NGINXCONF=`grep -A 5 -i '\[.*nginx.*\]' ${CONFFILE} | \
+    NGINXCONF=`grep -v '#' ${CONFFILE} | \
+	       grep -A 10 -i '\[.*nginx.*\]' | \
                grep -i 'configfile.*=' | \
                awk -F= '{print $2}' | \
                sed 's/ //g' | \
