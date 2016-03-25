@@ -50,8 +50,8 @@ if [ -n "${nginx_master}" ]; then
 	    echo ""
 	fi
 
-	echo " ---> ps -xa -o pid,ppid,command | grep 'nginx[:]'"
-	ps -xa -o pid,ppid,command | grep 'nginx[:]'
+	echo " ---> ps -xa -o user,pid,ppid,command | egrep 'nginx[:]|[^/]amplify[-]agent'"
+	ps -xa -o user,pid,ppid,command | egrep 'nginx[:]|[^/]amplify[-]agent'
 	echo ""
 
     done
@@ -139,6 +139,9 @@ if [ "${found_agent_conf}" = "yes" ]; then
 	fi
     fi
 
+    echo ""
+    echo " ---> ps axu | grep -i '[^/]amplify[-]'"
+    ps axu | grep -i '[^/]amplify[-]'
     echo ""
 fi
 
@@ -300,7 +303,8 @@ if [ "${os}" = "centos" -a -f /etc/selinux/config ]; then
 fi
 
 echo "===> environment variables:"
-set
+set | \
+egrep 'PATH|SHELL|TERM|USER|HOSTNAME|HOSTTYPE|LOGNAME|MACHTYPE|OSTYPE|SUDO_USER|SUDO_COMMAND'
 
 echo ""
 
