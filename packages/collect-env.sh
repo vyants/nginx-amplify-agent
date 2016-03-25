@@ -28,6 +28,7 @@ if [ -n "${nginx_master}" ]; then
 
     for i in ${nginx_master}; do
 	echo " ---> ${i}"
+	echo ""
 	nginx_bin=`echo ${i} | sed 's/.*master process \([^ ][^ ]*\).*$/\1/'`
 	nginx_conf_option=`echo ${i} | grep '\-c' | sed 's/.*-c \([^ ][^ ]*\).*$/\1/'`
 
@@ -35,17 +36,22 @@ if [ -n "${nginx_master}" ]; then
 	    echo " ---> started from binary: ${nginx_bin}"
 	    test -f "${nginx_bin}" && \
 	    ls -la ${nginx_bin}
+	    echo ""
 
 	    if [ -n "${nginx_conf_option}" ]; then
 		echo " ---> started with config file: ${nginx_conf_option}"
+		echo ""
 		ls -la ${nginx_conf_option}
 	    fi
 
 	    test -f "${nginx_bin}" && \
 	    echo " ---> version and configure options:" && \
 	    ${nginx_bin} -V 2>&1
+	    echo ""
 	fi
 
+	echo " ---> ps -xa -o pid,ppid,command | grep 'nginx[:]'"
+	ps -xa -o pid,ppid,command | grep 'nginx[:]'
 	echo ""
 
     done
@@ -271,7 +277,7 @@ if [ -n "${pkg_cmd}" ]; then
 fi
 
 if cat /proc/1/cgroup | grep -v '.*/$' > /dev/null 2>&1; then
-    echo "===> looks like this is container, not a host system"
+    echo "===> looks like this is a container, not a host system"
     cat /proc/1/cgroup | grep -v '.*/$'
     echo ""
 fi
