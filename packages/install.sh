@@ -73,7 +73,7 @@ get_os_name () {
 		release=`cat /etc/*-release | grep -i 'centos.*[0-9]' | \
 			 sed 's/^[^0-9]*\([0-9][0-9]*\).*$/\1/' | head -1`
 		;;
-	    rhel)
+	    rhel|ol)
 		codename=`cat /etc/*-release | grep -i 'red hat.*(' | \
 			  sed 's/.*(\(.*\)).*/\1/' | head -1 | \
 			  tr '[:upper:]' '[:lower:]'`
